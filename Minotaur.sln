@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minotaur", "Minotaur\Minota
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{585AC8DA-678F-4AFA-A93B-09FF30C1F086}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minotaur.Tests", "Tests\Minotaur.Tests\Minotaur.Tests.csproj", "{7207E5DC-A651-4024-A0F9-D4FC529231C3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minotaur.Tests", "Tests\Minotaur.Tests\Minotaur.Tests.csproj", "{F7CFFDF4-47E5-45EB-B359-5D870066A9A6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,16 +19,16 @@ Global
 		{BF76D9C4-8F7F-44AC-BEA0-B04B03D19437}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BF76D9C4-8F7F-44AC-BEA0-B04B03D19437}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BF76D9C4-8F7F-44AC-BEA0-B04B03D19437}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7207E5DC-A651-4024-A0F9-D4FC529231C3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7207E5DC-A651-4024-A0F9-D4FC529231C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7207E5DC-A651-4024-A0F9-D4FC529231C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7207E5DC-A651-4024-A0F9-D4FC529231C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7CFFDF4-47E5-45EB-B359-5D870066A9A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7CFFDF4-47E5-45EB-B359-5D870066A9A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7CFFDF4-47E5-45EB-B359-5D870066A9A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7CFFDF4-47E5-45EB-B359-5D870066A9A6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{7207E5DC-A651-4024-A0F9-D4FC529231C3} = {585AC8DA-678F-4AFA-A93B-09FF30C1F086}
+		{F7CFFDF4-47E5-45EB-B359-5D870066A9A6} = {585AC8DA-678F-4AFA-A93B-09FF30C1F086}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BFFD056A-C694-4031-868F-1E6436E0B3C3}

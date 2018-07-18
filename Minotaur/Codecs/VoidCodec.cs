@@ -15,6 +15,11 @@ namespace Minotaur.Codecs
             return count;
         }
 
+        public int DecodeHead(ref byte* src, int len)
+        {
+            return 0;
+        }
+
         public int Decode(ref byte* src, int lSrc, ref byte* dst, int lDst)
         {
             var count = Math.Min(lSrc, lDst);

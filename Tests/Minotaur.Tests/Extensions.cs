@@ -11,8 +11,8 @@ namespace Minotaur.Tests
             Assert.NotNull(x);
             Assert.NotNull(y);
 
-            Assert.InRange(x.Length, x.Length, int.MaxValue);
-            Assert.InRange(y.Length, y.Length, int.MaxValue);
+            Assert.True(x.Length >= offsetX + length, "X Length");
+            Assert.True(y.Length >= offsetY + length, "Y Length");
             for (int i = offsetX, j = offsetY, k = 0; k < length; i++, j++, k++)
                 Assert.Equal(x[i], y[j]);
         }

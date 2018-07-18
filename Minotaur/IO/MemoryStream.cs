@@ -33,7 +33,7 @@ namespace Minotaur.IO
             if (_offset >= _capacity) return 0;
 
             fixed (byte* pt = &_buffer[_offset])
-                CopyMemory(p, pt, length);
+                Buffer.MemoryCopy(pt, p, length, length);
 
             _offset += length;
 
@@ -45,7 +45,7 @@ namespace Minotaur.IO
             EnsureCapacity(_offset + length);
 
             fixed (byte* pt = &_buffer[_offset])
-                CopyMemory(pt, p, length);
+                Buffer.MemoryCopy(p, pt, length, length);
 
             _offset += length;
             _end = Math.Max(_end, _offset);
@@ -104,26 +104,10 @@ namespace Minotaur.IO
             }
 
             var copy = new byte[_capacity];
-            fixed (byte* pOut = copy)
-            fixed (byte* pIn = _buffer)
-                CopyMemory(pOut, pIn, _buffer.Length);
+            fixed (byte* dst = copy)
+            fixed (byte* src = _buffer)
+                Buffer.MemoryCopy(src, dst, _buffer.Length, _buffer.Length);
             _buffer = copy;
-        }
-
-        private static void CopyMemory(byte* pOut, byte* pIn, int length)
-        {
-            // Todo: Benchmark with  Buffer.MemoryCopy();
-            // Todo: Benchmark with Buffer.Memove() from : https://github.com/dotnet/coreclr/blob/ea9bee5ac2f96a1ea6b202dc4094b8d418d9209c/src/mscorlib/src/System/Buffer.cs
-            var nbSteps = length / Kernel.OPTIMAL_MEMCPY_SIZE;
-            for (var i = 0; i < nbSteps; i++)
-            {
-                Buffer.MemoryCopy(pIn, pOut, Kernel.OPTIMAL_MEMCPY_SIZE, Kernel.OPTIMAL_MEMCPY_SIZE);
-                pIn += Kernel.OPTIMAL_MEMCPY_SIZE;
-                pOut += Kernel.OPTIMAL_MEMCPY_SIZE;
-            }
-            var remainingSize = length - nbSteps * Kernel.OPTIMAL_MEMCPY_SIZE;
-            if (remainingSize > 0)
-                Buffer.MemoryCopy(pIn, pOut, Kernel.OPTIMAL_MEMCPY_SIZE, Kernel.OPTIMAL_MEMCPY_SIZE);
         }
     }
 }

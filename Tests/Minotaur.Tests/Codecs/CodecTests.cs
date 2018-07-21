@@ -10,6 +10,139 @@ namespace Minotaur.Tests.Codecs
     public class CodecTests
     {
         [Test]
+        public unsafe void TestEncodeDecodeUInt64()
+        {
+            var values = new ulong[64 * 2];
+            for (var i = 1; i < 64; i++)
+            {
+                var value = (ulong)Math.Pow(2, i);
+                values[i * 2] = value - 1;
+                values[i * 2 + 1] = value;
+            }
+
+            var buffer = stackalloc byte[9];
+            for (var i = 0; i < values.Length; i++)
+            {
+                var p = buffer;
+                Codec.EncodeUInt64(values[i], ref p);
+
+                p = buffer;
+                var value = Codec.DecodeUInt64(ref p);
+                Assert.AreEqual(values[i], value, "At idx: " + i);
+            }
+        }
+
+        [Test]
+        public unsafe void TestEncodeDecodeInt64()
+        {
+            var values = new long[64 * 4];
+            for (var i = 1; i < 64; i++)
+            {
+                var value = (ulong)Math.Pow(2, i);
+                values[i * 4] = (long)(value - 1);
+                values[i * 4 + 1] = (long)value;
+                values[i * 4 + 2] = -values[i * 4];
+                values[i * 4 + 3] = -values[i * 4 + 1];
+            }
+
+            var buffer = stackalloc byte[9];
+            for (var i = 0; i < values.Length; i++)
+            {
+                var p = buffer;
+                Codec.EncodeInt64(values[i], ref p);
+
+                p = buffer;
+                var value = Codec.DecodeInt64(ref p);
+                Assert.AreEqual(values[i], value, "At idx: " + i);
+            }
+        }
+
+        [Test]
+        public unsafe void TestEncodeDecodeUInt32()
+        {
+            var values = new uint[32 * 2];
+            for (var i = 1; i < 32; i++)
+            {
+                var value = (uint)Math.Pow(2, i);
+                values[i * 2] = value - 1;
+                values[i * 2 + 1] = value;
+            }
+
+            var buffer = stackalloc byte[5];
+            for (var i = 0; i < values.Length; i++)
+            {
+                var p = buffer;
+                Codec.EncodeUInt32(values[i], ref p);
+
+                p = buffer;
+                var value = Codec.DecodeUInt32(ref p);
+                Assert.AreEqual(values[i], value, "At idx: " + i);
+            }
+        }
+
+        [Test]
+        public unsafe void TestEncodeDecodeInt32()
+        {
+            var values = new int[32 * 4];
+            for (var i = 1; i < 32; i++)
+            {
+                var value = (uint)Math.Pow(2, i);
+                values[i * 4] = (int)value - 1;
+                values[i * 4 + 1] = (int)value;
+                values[i * 4 + 2] = -values[i * 4];
+                values[i * 4 + 3] = -values[i * 4 + 1];
+            }
+
+            var buffer = stackalloc byte[5];
+            for (var i = 63; i < values.Length; i++)
+            {
+                var p = buffer;
+                Codec.EncodeInt32(values[i], ref p);
+
+                p = buffer;
+                var value = Codec.DecodeInt32(ref p);
+                Assert.AreEqual(values[i], value, "At idx: " + i);
+            }
+        }
+
+        [Test]
+        public unsafe void TestEncodeDecodeFlagedInt32()
+        {
+            var values = new int[32 * 4];
+            for (var i = 1; i < 32; i++)
+            {
+                var value = (uint)Math.Pow(2, i);
+                values[i * 4] = (int)value - 1;
+                values[i * 4 + 1] = (int)value;
+                values[i * 4 + 2] = -values[i * 4];
+                values[i * 4 + 3] = -values[i * 4 + 1];
+            }
+
+            var buffer = stackalloc byte[5];
+            for (var i = 63; i < values.Length; i++)
+            {
+                var p = buffer;
+                Codec.EncodeInt32(true, values[i], ref p);
+
+                p = buffer;
+                var value = Codec.DecodeInt32(ref p, out var flag);
+                Assert.AreEqual(values[i], value, "At idx: " + i);
+                Assert.IsTrue(flag);
+            }
+
+            for (var i = 63; i < values.Length; i++)
+            {
+                var p = buffer;
+                Codec.EncodeInt32(false, values[i], ref p);
+
+                p = buffer;
+                var value = Codec.DecodeInt32(ref p, out var flag);
+                Assert.AreEqual(values[i], value, "At idx: " + i);
+                Assert.IsFalse(flag);
+            }
+        }
+
+        [Test]
         public unsafe void TestNoCompressionCodec()
         {
             CheckCodec(new VoidCodec(), p => Factory.CreateDoubleChunk(p), sizeof(DoubleEntry), checkDecodeHeadInMove: false);

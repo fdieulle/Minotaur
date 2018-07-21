@@ -48,6 +48,28 @@ namespace Minotaur.Tests
             return data;
         }
 
+        public static Int64Entry[] CreateInt64Chunk(int count, DateTime? start = null, int valueQo = 1000, double percentOfFill = 1.0, int ticksIntervalMs = 100)
+        {
+            var data = new Int64Entry[(int)(count * percentOfFill)];
+
+            var ticks = (start ?? DateTime.Now).Ticks;
+            var ticksStep = TimeSpan.FromMilliseconds(ticksIntervalMs).Ticks;
+            data[0].ticks = ticks;
+            data[0].value = (int)(random.NextDouble() * 100 / valueQo) * valueQo;
+
+            for (int i = 1, j = 1; i < count && j < data.Length; i++)
+            {
+                ticks += ticksStep;
+
+                if (!(random.NextDouble() + percentOfFill >= 1.0)) continue;
+
+                data[j].ticks = ticks;
+                data[j].value = (long)(random.NextDouble() * 100 / valueQo) * valueQo;
+                j++;
+            }
+            return data;
+        }
+
         public static DoubleEntry[] CreateDoubleChunk(int count, DateTime? start = null, double percentOfFill = 1.0, int ticksIntervalMs = 100)
         {
             var data = new DoubleEntry[(int)(count * percentOfFill)];
@@ -65,6 +87,50 @@ namespace Minotaur.Tests
 
                 data[j].ticks = ticks;
                 data[j].value = random.NextDouble() * 100.0;
+                j++;
+            }
+            return data;
+        }
+
+        public static FloatEntry[] CreateFloatChunk(int count, DateTime? start = null, double percentOfFill = 1.0, int ticksIntervalMs = 100)
+        {
+            var data = new FloatEntry[(int)(count * percentOfFill)];
+
+            var ticks = (start ?? DateTime.Now).Ticks;
+            var ticksStep = TimeSpan.FromMilliseconds(ticksIntervalMs).Ticks;
+            data[0].ticks = ticks;
+            data[0].value = (float)(random.NextDouble() * 100.0);
+
+            for (int i = 1, j = 1; i < count && j < data.Length; i++)
+            {
+                ticks += ticksStep;
+
+                if (!(random.NextDouble() + percentOfFill >= 1.0)) continue;
+
+                data[j].ticks = ticks;
+                data[j].value = (float)(random.NextDouble() * 100.0);
+                j++;
+            }
+            return data;
+        }
+
+        public static StringEntry[] CreateStringChunk(int count, DateTime? start = null, double percentOfFill = 1.0, int ticksIntervalMs = 100)
+        {
+            var data = new StringEntry[(int)(count * percentOfFill)];
+
+            var ticks = (start ?? DateTime.Now).Ticks;
+            var ticksStep = TimeSpan.FromMilliseconds(ticksIntervalMs).Ticks;
+            data[0].ticks = ticks;
+            data[0].SetValue(Guid.NewGuid().ToString("D"));
+
+            for (int i = 1, j = 1; i < count && j < data.Length; i++)
+            {
+                ticks += ticksStep;
+
+                if (!(random.NextDouble() + percentOfFill >= 1.0)) continue;
+
+                data[j].ticks = ticks;
+                data[j].SetValue(Guid.NewGuid().ToString("D"));
                 j++;
             }
             return data;

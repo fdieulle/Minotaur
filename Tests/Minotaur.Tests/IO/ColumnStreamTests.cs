@@ -30,6 +30,24 @@ namespace Minotaur.Tests.IO
             CheckStream(new VoidCodec(), p => Factory.CreateDoubleChunk(p), sizeof(DoubleEntry));
         }
 
+        [Test]
+        public void VoidCodecForInt64EntryTest()
+        {
+            CheckStream(new VoidCodec(), p => Factory.CreateInt64Chunk(p), sizeof(Int64Entry));
+        }
+
+        [Test]
+        public void VoidCodecForFloatEntryTest()
+        {
+            CheckStream(new VoidCodec(), p => Factory.CreateFloatChunk(p), sizeof(FloatEntry));
+        }
+
+        [Test]
+        public void VoidCodecForStringEntryTest()
+        {
+            CheckStream(new VoidCodec(), p => Factory.CreateStringChunk(p), sizeof(StringEntry));
+        }
+
         private static void CheckStream<T>(ICodec codec, Func<int, T[]> factory, int sizeOfT)
             where  T : struct
         {

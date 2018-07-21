@@ -14,6 +14,18 @@ namespace Minotaur.Tests
             return data;
         }
 
+        public static long[] CreateTimelineTicks(int count, double intervalMs = 233)
+        {
+            var ticks = new long[count];
+            var now = DateTime.Now;
+            for (var i = 0; i < count; i++)
+            {
+                ticks[i] = now.Ticks;
+                now = now.AddMilliseconds(intervalMs);
+            }
+            return ticks;
+        }
+
         public static Int32Entry[] CreateInt32Chunk(int count, DateTime? start = null, int valueQo = 1000, double percentOfFill = 1.0, int ticksIntervalMs = 100)
         {
             var data = new Int32Entry[(int)(count * percentOfFill)];

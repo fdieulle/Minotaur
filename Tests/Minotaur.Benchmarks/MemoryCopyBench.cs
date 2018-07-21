@@ -1,21 +1,14 @@
 using System;
 using System.Text;
 using Minotaur.Tests.Tools;
-using Xunit;
-using Xunit.Abstractions;
+using NUnit.Framework;
 
 namespace Minotaur.Benchmarks
 {
+    [TestFixture]
     public class MemoryCopyBench
     {
-        private readonly ITestOutputHelper _output;
-
-        public MemoryCopyBench(ITestOutputHelper output)
-        {
-            _output = output;
-        }
-
-        [Fact]
+        [Test]
         public void Bench()
         {
             const int count = 20;
@@ -38,7 +31,7 @@ namespace Minotaur.Benchmarks
                 sb.AppendLine($"#2 {cm2.Measure(src, dst, size)}");
             }
 
-           _output.WriteLine(sb.ToString());
+           Console.WriteLine(sb.ToString());
         }
 
         private static unsafe void CopyMem1(byte[] src, byte[] dst, int len)

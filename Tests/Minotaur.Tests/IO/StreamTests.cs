@@ -1,11 +1,12 @@
 ﻿using System.IO;
-using Xunit;
+using NUnit.Framework;
 
 namespace Minotaur.Tests.IO
 {
+    [TestFixture]
     public class StreamTests
     {
-        [Fact]
+        [Test]
         public unsafe void MemoryStreamTests()
         {
             var data1 = Factory.CreateRandomBytes(1024 * 3 + 500);

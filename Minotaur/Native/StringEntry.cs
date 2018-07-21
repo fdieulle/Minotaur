@@ -7,26 +7,25 @@ namespace Minotaur.Native
     public unsafe struct StringEntry : IEquatable<StringEntry>
     {
         [FieldOffset(0)]
-        public int index;
-        [FieldOffset(4)]
+        public long ticks;
+        [FieldOffset(8)]
         public byte length;
-        [FieldOffset(5)]
-        public fixed char value[251];
+        [FieldOffset(9)]
+        public fixed byte value[247];
 
         #region Equality members
 
         public bool Equals(StringEntry other)
         {
-            if (index != other.index || length != other.length) return false;
+            if (ticks != other.ticks || length != other.length) return false;
 
-            //fixed (char* pv = value)
-            //{
-            //    fixed (char* po = other.value)
-            //    {
-            //        for (var i = 0; i < length; i++)
-            //            if (*(pv + i) != *(po + i)) return false;
-            //    }
-            //}
+            unchecked
+            {
+                fixed (byte* pv = value)
+                    for (var i = 0; i < length; i++)
+                        if (*(pv + i) != other.value[i])
+                            return false;
+            }
 
             return true;
         }
@@ -41,11 +40,13 @@ namespace Minotaur.Native
         {
             unchecked
             {
-                // ReSharper disable NonReadonlyFieldInGetHashCode
-                var hashCode = index;
+                // ReSharper disable NonReadonlyMemberInGetHashCode
+                var hashCode = ticks.GetHashCode();
                 hashCode = (hashCode * 397) ^ length.GetHashCode();
-                //hashCode = (hashCode * 397) ^ new String(value).GetHashCode();
-                // ReSharper restore NonReadonlyFieldInGetHashCode
+                fixed (byte* pv = value)
+                    for (var i = 0; i < length; i++)
+                        hashCode = (hashCode * 397) ^ (*(pv + i)).GetHashCode();
+                // ReSharper restore NonReadonlyMemberInGetHashCode
                 return hashCode;
             }
         }
@@ -62,9 +63,33 @@ namespace Minotaur.Native
 
         #endregion
 
+        public void SetValue(char* c, int len)
+        {
+            length = (byte)Math.Min(247, len);
+            fixed (byte* pv = value)
+                for (var i = 0; i < length; i++)
+                    *(pv + i) = (byte)*(c + i);
+        }
+
+        public void SetValue(string s)
+        {
+            fixed (char* ps = s)
+                SetValue(ps, s.Length);
+        }
+
+        public string GetValue()
+        {
+            var array = stackalloc char[length];
+            fixed (byte* pv = value)
+                for (var i = 0; i < length; i++)
+                    array[i] = (char)*(pv + i);
+            return new string(array);
+        }
+
         public override string ToString()
         {
-            return $"Index: {index}, Value: {null}";
+            fixed (byte* pv = value)
+                return $"Index: {new DateTime(ticks)}, Value: {GetValue()}";
         }
     }
 }

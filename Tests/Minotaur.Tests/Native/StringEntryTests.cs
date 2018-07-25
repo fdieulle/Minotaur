@@ -23,7 +23,7 @@ namespace Minotaur.Tests.Native
                 array[i] = 'A';
             var str = new string(array);
             s.SetValue(str);
-            Assert.AreEqual(str.Substring(0, 247), s.GetValue());
+            Assert.AreEqual(str.Substring(0, StringEntry.MAX_SIZE), s.GetValue());
         }
     }
 }

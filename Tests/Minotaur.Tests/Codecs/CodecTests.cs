@@ -12,12 +12,16 @@ namespace Minotaur.Tests.Codecs
         [Test]
         public unsafe void TestEncodeDecodeUInt64()
         {
-            var values = new ulong[64 * 2];
+            const int factor = 5;
+            var values = new ulong[64 * factor];
             for (var i = 1; i < 64; i++)
             {
                 var value = (ulong)Math.Pow(2, i);
-                values[i * 2] = value - 1;
-                values[i * 2 + 1] = value;
+                values[i * 2] = value - 2;
+                values[i * 2 + 1] = value - 1;
+                values[i * 2 + 2] = value;
+                values[i * 2 + 3] = value + 1;
+                values[i * 2 + 3] = value + 2;
             }
 
             var buffer = stackalloc byte[9];
@@ -35,14 +39,23 @@ namespace Minotaur.Tests.Codecs
         [Test]
         public unsafe void TestEncodeDecodeInt64()
         {
-            var values = new long[64 * 4];
+            const int factor = 10;
+            var values = new long[64 * factor];
             for (var i = 1; i < 64; i++)
             {
-                var value = (ulong)Math.Pow(2, i);
-                values[i * 4] = (long)(value - 1);
-                values[i * 4 + 1] = (long)value;
-                values[i * 4 + 2] = -values[i * 4];
-                values[i * 4 + 3] = -values[i * 4 + 1];
+                var value = (long)Math.Pow(2, i);
+
+                values[i * factor] = value - 2;
+                values[i * factor + 1] = value - 1;
+                values[i * factor + 2] = value;
+                values[i * factor + 3] = value + 1;
+                values[i * factor + 4] = value + 2;
+
+                values[i * factor + 5] = -values[i * factor];
+                values[i * factor + 6] = -values[i * factor + 1];
+                values[i * factor + 7] = -values[i * factor + 2];
+                values[i * factor + 8] = -values[i * factor + 3];
+                values[i * factor + 9] = -values[i * factor + 4];
             }
 
             var buffer = stackalloc byte[9];

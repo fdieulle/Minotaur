@@ -86,7 +86,7 @@ namespace Minotaur.Native
 
         public string GetValue()
         {
-            var array = stackalloc char[length];
+            var array = new char[length];
             fixed (byte* pv = value)
                 for (var i = 0; i < length; i++)
                     array[i] = (char)*(pv + i);
@@ -95,8 +95,7 @@ namespace Minotaur.Native
 
         public override string ToString()
         {
-            fixed (byte* pv = value)
-                return $"Index: {new DateTime(ticks)}, Value: {GetValue()}";
+            return $"Index: {new DateTime(ticks)}, Value: {GetValue()}";
         }
     }
 }

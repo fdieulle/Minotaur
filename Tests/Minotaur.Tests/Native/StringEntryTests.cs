@@ -10,7 +10,7 @@ namespace Minotaur.Tests.Native
         [Test]
         public void TestGetSetValue()
         {
-            Assert.AreEqual(256, sizeof(StringEntry));
+            Assert.AreEqual(StringEntry.SIZE, sizeof(StringEntry));
 
             var s = new StringEntry();
             
@@ -23,7 +23,7 @@ namespace Minotaur.Tests.Native
                 array[i] = 'A';
             var str = new string(array);
             s.SetValue(str);
-            Assert.AreEqual(str.Substring(0, StringEntry.MAX_SIZE), s.GetValue());
+            Assert.AreEqual(str.Substring(0, StringEntry.SIZE_OF_VALUE), s.GetValue());
         }
     }
 }

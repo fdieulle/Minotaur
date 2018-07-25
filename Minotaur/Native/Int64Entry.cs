@@ -3,9 +3,11 @@ using System.Runtime.InteropServices;
 
 namespace Minotaur.Native
 {
-    [StructLayout(LayoutKind.Explicit, Size = 16)]
+    [StructLayout(LayoutKind.Explicit, Size = SIZE)]
     public struct Int64Entry : IEquatable<Int64Entry>
     {
+        public const int SIZE = 16;
+
         [FieldOffset(0)]
         public long ticks;
         [FieldOffset(8)]

@@ -3,15 +3,22 @@ using System.Runtime.InteropServices;
 
 namespace Minotaur.Native
 {
-    [StructLayout(LayoutKind.Explicit, Size = 256)]
+    [StructLayout(LayoutKind.Explicit, Size = SIZE)]
     public unsafe struct StringEntry : IEquatable<StringEntry>
     {
+        public const int SIZE_OF_TICKS = sizeof(long);
+        public const int SIZE_OF_VALUE_LENGTH = 1;
+        public const int SIZE_OF_VALUE = 128;
+        public const int SIZE_OF_TICKS_WITH_LENGTH = SIZE_OF_TICKS + SIZE_OF_VALUE_LENGTH;
+        public const int SIZE_OF_VALUE_WITH_LENGTH = SIZE_OF_VALUE + SIZE_OF_VALUE_LENGTH;
+        public const int SIZE = SIZE_OF_VALUE_WITH_LENGTH + SIZE_OF_TICKS;
+
         [FieldOffset(0)]
         public long ticks;
         [FieldOffset(8)]
         public byte length;
         [FieldOffset(9)]
-        public fixed byte value[247];
+        public fixed byte value[SIZE_OF_VALUE];
 
         #region Equality members
 
@@ -65,7 +72,7 @@ namespace Minotaur.Native
 
         public void SetValue(char* c, int len)
         {
-            length = (byte)Math.Min(247, len);
+            length = (byte)Math.Min(SIZE_OF_VALUE, len);
             fixed (byte* pv = value)
                 for (var i = 0; i < length; i++)
                     *(pv + i) = (byte)*(c + i);

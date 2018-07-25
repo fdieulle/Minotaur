@@ -51,7 +51,7 @@ namespace Minotaur.Cursors
 
             do
             {
-                // Todo: maybe we can copy snapshot memory in once instruction
+                // Todo: Maybe It's better to copy snapshot memory with Buffer.CopyMemory call
                 var from = _offset;
 
                 *_snapshot = *(long*)from;

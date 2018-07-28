@@ -179,19 +179,6 @@ namespace Minotaur.Tests
 
         #endregion
 
-        public static void Check<T>(this T[] x, int offsetX, T[] y, int offsetY, int length)
-        {
-            if (x == null && y == null) return;
-            
-            Assert.IsNotNull(x, "x is null");
-            Assert.IsNotNull(y, "y is null");
-
-            Assert.GreaterOrEqual(x.Length, offsetX + length, "X Length");
-            Assert.GreaterOrEqual(y.Length, offsetY + length, "Y Length");
-            for (int i = offsetX, j = offsetY, k = 0; k < length; i++, j++, k++)
-                Assert.AreEqual(x[i], y[j], "for x[" + i + "] with y[" + j + "]");
-        }
-
         public static T GetNext<T>(this IFieldCursor<T> cursor, int index)
             where T : struct
         {
@@ -202,6 +189,13 @@ namespace Minotaur.Tests
         public static int Floor(this int x, int qo)
         {
             return x / qo * qo;
+        }
+
+        public static unsafe void SetAll(this IntPtr ptr, int length, byte value)
+        {
+            var p = (byte*)ptr;
+            for (var i = 0; i < length; i++)
+                *(p + i) = value;
         }
     }
 }

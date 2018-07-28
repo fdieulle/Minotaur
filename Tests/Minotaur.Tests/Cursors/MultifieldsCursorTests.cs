@@ -105,7 +105,10 @@ namespace Minotaur.Tests.Cursors
 
                 // Reset streams
                 foreach (var stream in streams.Values)
+                {
+                    stream.Flush();
                     stream.Reset();
+                }
 
                 #endregion
 

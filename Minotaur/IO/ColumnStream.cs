@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using Minotaur.Codecs;
 using Minotaur.Core;
 
@@ -49,9 +51,9 @@ namespace Minotaur.IO
         private readonly TCodec _codec;
 
         private readonly byte* _buffer;
-        private readonly int _capacity;
         private byte* _blockEnd;
         private byte* _offset;
+        private readonly int _capacity;
 
         public ColumnStream(
             TStream underlying,
@@ -75,12 +77,9 @@ namespace Minotaur.IO
                     // Read tail part if it's not the first block
                     if (_offset != _buffer)
                     {
-                        // Read skipped size
-                        var skip = *(int*)_offset;
-                        _offset += SKIP_SIZE + skip;
-
+                        var skip = *(int*) _offset;
                         // Read Checksum
-                        if (*_offset != CHECKSUM)
+                        if (*(_offset + SKIP_SIZE + skip) != CHECKSUM)
                             throw new CorruptedDataException("Checksum failed");
                     }
 
@@ -95,11 +94,13 @@ namespace Minotaur.IO
                     _codec.DecodeHead(ref _offset, blockLength);
                 }
 
-                var rbs = (int)(_blockEnd - _offset); // Remaining buffer size
-                var rds = length - read; // Remaining data size
-                if (Math.Min(rds, rbs) <= 0) return read;
+                var remainingBytes = (int) (_blockEnd - _offset);
+                read += _codec.Decode(ref _offset, remainingBytes, ref p, length - read);
 
-                read += _codec.Decode(ref _offset, rbs, ref p, rds);
+#if Debug
+                if((int) (_blockEnd - _offset) <= remainingBytes) 
+                    throw new InvalidOperationException($"The codec {typeof(TCodec)} decoded nothing and the read is fallen in an infinity loop");
+#endif
             }
 
             return read;
@@ -108,7 +109,8 @@ namespace Minotaur.IO
         /// <summary>
         /// Write columnar data by choosing the best codec to used. i.e. the best compression we can have.
         /// It's better to write a suffisant number of column entries to optimise the compression.
-        /// I mean, write data by block is better, but you can still read entry one by one.
+        /// If you write too little bytes you will hurt your performances.
+        /// I mean, write data by block is better, but don't worry you can still read entries one by one.
         /// In fact even if you more data than this stream capacity, many blocks of the same capacity will be generated,
         /// untill all data given has been consumed.
         /// </summary>
@@ -120,36 +122,16 @@ namespace Minotaur.IO
             var wrote = 0;
             while (wrote < length)
             {
-                var rds = length - wrote; // Remaining data size
-                if (Math.Min(rds, _capacity) <= 0) return wrote;
+                _offset = _buffer + HEAD_SIZE;
+                wrote += _codec.Encode(ref p, length - wrote, ref _offset, _capacity - WRAP_SIZE);
 
-                _offset += HEAD_SIZE;
-
-                var dataWrote = _codec.Encode(ref p, rds, ref _offset, _capacity - WRAP_SIZE);
-                if (dataWrote <= 0)
-                {
-                    _offset = _buffer;
-                    return wrote;
-                }
-
-                var encodedSize = (int)(_offset - _buffer) - HEAD_SIZE;
-                wrote += dataWrote;
-
-                // Write skip length
-                var skip = _capacity - encodedSize - WRAP_SIZE;
-                *(int*)_offset = skip;
-                _offset += SKIP_SIZE + skip;
-                // Write checksum
-                *_offset++ = CHECKSUM;
-
-                if (_offset - _buffer != _capacity)
-                    throw new CorruptedDataException("Block size corrupted by writer");
-
-                // Write head
-                *(int*)_buffer = encodedSize;
-
-                _underlying.Write(_buffer, _capacity);
-                _offset = _buffer;
+#if Debug
+                if(_offset <= _buffer + HEAD_SIZE) 
+                    throw new InvalidOperationException($"The codec {typeof(TCodec)} encoded nothing and the write is fallen in an infinity loop");
+#endif
+                // If the buffer is filled we push data into underlying stream
+                if (_offset - _buffer > (_capacity - WRAP_SIZE) * 0.95)
+                    Flush();
             }
 
             return wrote;
@@ -162,13 +144,24 @@ namespace Minotaur.IO
 
         public void Reset()
         {
-            _underlying.Reset();
             _blockEnd = _offset = _buffer;
+            _underlying.Reset();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Flush()
         {
-            _underlying.Write(_buffer, (int)(_offset - _buffer));
+            var encodedSize = (int)(_offset - _buffer) - HEAD_SIZE;
+            if (encodedSize <= 0) return;
+
+            // Write block size before encoded data
+            *(int*)_buffer = encodedSize;
+            // Write skipped block size just after encoded data
+            *(int*)_offset = _capacity - encodedSize - WRAP_SIZE;
+            // Write checksum at the end of block
+            *(_buffer + (_capacity - CHECKSUM_SIZE)) = CHECKSUM;
+
+            _underlying.Write(_buffer, _capacity);
             _offset = _buffer;
         }
 

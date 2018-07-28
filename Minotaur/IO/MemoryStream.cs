@@ -10,6 +10,8 @@ namespace Minotaur.IO
         private int _offset;
         private int _end;
 
+        public int Position => _offset;
+
         public MemoryStream(int capacity = 8192)
             : this(new byte[capacity])
         {
@@ -80,7 +82,24 @@ namespace Minotaur.IO
             _offset = 0;
         }
 
+        public void Flush()
+        {
+            
+        }
+
         #endregion
+
+        public byte[] ToArray()
+        {
+            var copy = new byte[_end];
+            Array.Copy(_buffer, copy, _end);
+            return copy;
+        }
+
+        public void SetLength(int length)
+        {
+            _end = length;
+        }
 
         #region Implementation of IDisposable
 

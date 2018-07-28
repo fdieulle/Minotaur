@@ -40,6 +40,11 @@ namespace Minotaur.Tests.Cursors
             _underlying.Reset();
         }
 
+        public void Flush()
+        {
+            _underlying.Flush();
+        }
+
         public void Dispose()
         {
             _underlying.Dispose();

@@ -36,5 +36,10 @@ namespace Minotaur.IO
         /// Reset the stream.
         /// </summary>
         void Reset();
+
+        /// <summary>
+        /// Flush buffered data to target output.
+        /// </summary>
+        void Flush();
     }
 }

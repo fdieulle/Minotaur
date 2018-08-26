@@ -4,6 +4,9 @@ using Minotaur.IO;
 
 namespace Minotaur.Cursors
 {
+    /// <summary>
+    /// Tis class is more an Helper than a concrete implementation
+    /// </summary>
     public unsafe class PinnedFieldCursor<T, TStream> : IFieldCursor<T>
         where T : struct
         where TStream : IStream

@@ -76,29 +76,17 @@ namespace Minotaur.Tests.Cursors
 
         #endregion
 
-        private static PinnedFieldCursor<T, MemoryStream> CreateCursor<TEntry, T>(TEntry[] chunk)
+        private static PinnedFieldCursor<T, IStream> CreateCursor<TEntry, T>(TEntry[] chunk)
             where T : struct
         {
             var length = chunk.Length * Marshal.SizeOf<TEntry>();
             var memory = new MemoryStream(length);
             memory.WriteAndReset(chunk, Marshal.SizeOf<TEntry>());
 
-            return new PinnedFieldCursor<T, MemoryStream>((p, s) => new FieldCursor<T, MemoryStream>((FieldSnapshot*)p, s), memory);
+            return new PinnedFieldCursor<T, IStream>((p, s) => new FieldCursor<T, IStream>((FieldSnapshot*)p, s), memory);
         }
 
-        //protected static PinnedFieldCursor<T> CreateCursor<TEntry, T>(
-        //    TEntry[] chunk, int entrySize, Func<IntPtr, IntPtr, int, IStream, IFieldCursor<T>> factory)
-        //    where T : struct
-        //{
-        //    var length = chunk.Length * entrySize;
-        //    var memory = new MemoryStream(length);
-        //    memory.WriteAndReset(chunk, entrySize);
-
-        //    var bufLen = Math.Max(2, chunk.Length / 3) * entrySize;
-        //    return new PinnedFieldCursor<T>(entrySize, bufLen, (sPtr, bPtr, bLen) => factory(sPtr, bPtr, bLen, memory));
-        //}
-
-        public static PinnedFieldCursor<T, PinnedColumnStream> CreateCursor<TEntry, T>(
+        public static PinnedFieldCursor<T, IStream> CreateCursor<TEntry, T>(
             TEntry[] chunk, ICodec codec)
             where T : struct
         {
@@ -106,20 +94,8 @@ namespace Minotaur.Tests.Cursors
                 new MemoryStream(), codec, 1024);
             columnStream.WriteAndReset(chunk, Natives.SizeOfEntry<TEntry>());
 
-            return new PinnedFieldCursor<T, PinnedColumnStream>((p, s) => new FieldCursor<T,PinnedColumnStream>((FieldSnapshot*)p, s), columnStream);
+            return new PinnedFieldCursor<T, IStream>((p, s) => new FieldCursor<T, IStream>((FieldSnapshot*)p, s), columnStream);
         }
-
-        //public static PinnedFieldCursor<T> CreateCursor<TEntry, T>(
-        //    TEntry[] chunk, ICodec codec, Func<IntPtr, IntPtr, int, IStream, IFieldCursor<T>> factory)
-        //    where T : struct
-        //{
-        //    var columnStream = new PinnedColumnStream(
-        //        new MemoryStream(), codec, 1024);
-        //    columnStream.WriteAndReset(chunk, Natives.SizeOfEntry<TEntry>());
-
-        //    var bufLen = Math.Max(2, chunk.Length / 3) * Natives.SizeOfEntry<TEntry>();
-        //    return new PinnedFieldCursor<T>(Natives.SizeOfEntry<TEntry>(), bufLen, (sPtr, bPtr, bLen) => factory(sPtr, bPtr, bLen, columnStream));
-        //}
 
         protected static void TestFloatEntryCursor(Func<FloatEntry[], IFieldCursor<float>> factory)
         {

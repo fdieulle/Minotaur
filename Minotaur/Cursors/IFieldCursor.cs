@@ -4,9 +4,9 @@ namespace Minotaur.Cursors
 {
     public interface IFieldCursor : IDisposable
     {
-        bool Next(long ticks);
+        void MoveNext(long ticks);
 
-        bool Reset();
+        void Reset();
     }
 
     public interface IFieldCursor<out T> : IFieldCursor, IFieldProxy<T>

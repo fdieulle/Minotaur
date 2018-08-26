@@ -1,39 +1,32 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using Minotaur.IO;
 
 namespace Minotaur.Cursors
 {
-    public class PinnedFieldCursor<T> : IFieldCursor<T>
+    public unsafe class PinnedFieldCursor<T, TStream> : IFieldCursor<T>
         where T : struct
+        where TStream : IStream
+
     {
-        private GCHandle _snapHandle;
-        private GCHandle _bufHandle;
+        private GCHandle _handle;
         private readonly IFieldCursor<T> _underlying;
 
-        public PinnedFieldCursor(int snapshotSize, Func<IntPtr, IFieldCursor<T>> factory)
+        public PinnedFieldCursor(Func<IntPtr, TStream, IFieldCursor<T>> factory, TStream stream)
         {
-            var snapshot = new byte[snapshotSize];
-            _snapHandle = GCHandle.Alloc(snapshot, GCHandleType.Pinned);
-            _underlying = factory(_snapHandle.AddrOfPinnedObject());
+            var snapshot = new byte[sizeof(FieldSnapshot)];
+            _handle = GCHandle.Alloc(snapshot, GCHandleType.Pinned);
+            _underlying = factory(_handle.AddrOfPinnedObject(), stream);
         }
 
-        public PinnedFieldCursor(int snapshotSize, int bufferSize, Func<IntPtr, IntPtr, int, IFieldCursor<T>> factory)
+        public void MoveNext(long ticks)
         {
-            var snapshot = new byte[snapshotSize];
-            _snapHandle = GCHandle.Alloc(snapshot, GCHandleType.Pinned);
-            var buffer = new byte[bufferSize];
-            _bufHandle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-            _underlying = factory(_snapHandle.AddrOfPinnedObject(), _bufHandle.AddrOfPinnedObject(), bufferSize);
+            _underlying.MoveNext(ticks);
         }
 
-        public bool Next(long ticks)
+        public void Reset()
         {
-            return _underlying.Next(ticks);
-        }
-
-        public bool Reset()
-        {
-            return _underlying.Reset();
+            _underlying.Reset();
         }
 
         public DateTime Timestamp => _underlying.Timestamp;
@@ -43,10 +36,8 @@ namespace Minotaur.Cursors
         {
             _underlying.Dispose();
 
-            if (_snapHandle.IsAllocated)
-                _snapHandle.Free();
-            if (_bufHandle.IsAllocated)
-                _bufHandle.Free();
+            if (_handle.IsAllocated)
+                _handle.Free();
         }
     }
 }

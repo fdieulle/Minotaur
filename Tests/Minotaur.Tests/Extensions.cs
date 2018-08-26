@@ -182,7 +182,7 @@ namespace Minotaur.Tests
         public static T GetNext<T>(this IFieldCursor<T> cursor, int index)
             where T : struct
         {
-            cursor.Next(index);
+            cursor.MoveNext(index);
             return cursor.Value;
         }
 

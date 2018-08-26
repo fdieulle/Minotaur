@@ -1,42 +1,44 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Minotaur.IO;
 
 namespace Minotaur.Cursors
 {
-    public unsafe class MultiFieldsCursor : ICursor
+    public class MultiFieldsCursor<TStream> : ICursor
+        where TStream : IStream
     {
-        private readonly Dictionary<int, FieldCursor> _fields;
-        private readonly FieldCursor[] _cursors;
+        private readonly Dictionary<int, FieldCursor<TStream>> _fields;
+        private readonly FieldCursor<TStream>[] _cursors;
 
-        private long _currentTicks;
+        private long _ticks;
         private long _nextTicks;
 
-        public MultiFieldsCursor(Dictionary<int, FieldCursor> fields)
+        public MultiFieldsCursor(Dictionary<int, FieldCursor<TStream>> fields)
         {
-            _fields = fields ?? new Dictionary<int, FieldCursor>();
+            _fields = fields ?? new Dictionary<int, FieldCursor<TStream>>();
             _cursors = _fields.Values.ToArray();
 
             Reset();
         }
 
-        public DateTime Timestamp => new DateTime(_currentTicks);
+        public DateTime Timestamp => new DateTime(_ticks);
 
         public DateTime MoveNext(DateTime timestamp)
         {
-            if (timestamp.Ticks < _nextTicks) return new DateTime(_nextTicks);
-
-            var ticks = timestamp.Ticks;
-            unchecked
+            // Should not need a while here an if is enough
+            while (timestamp.Ticks >= _nextTicks)
             {
                 _nextTicks = Time.MaxTicks;
                 for (var i = 0; i < _cursors.Length; i++)
                 {
-                    if (_cursors[i].Next(ticks) && _cursors[i].Ticks > _currentTicks)
-                        _currentTicks = _cursors[i].Ticks;
+                    _cursors[i].MoveNext(timestamp.Ticks);
 
-                    if (*_cursors[i].NextTicks < _nextTicks)
-                        _nextTicks = *_cursors[i].NextTicks;
+                    if (_cursors[i].Ticks > _ticks)
+                        _ticks = _cursors[i].Ticks;
+
+                    if (_cursors[i].NextTicks < _nextTicks)
+                        _nextTicks = _cursors[i].NextTicks;
                 }
             }
 
@@ -50,14 +52,11 @@ namespace Minotaur.Cursors
 
         public void Reset()
         {
-            _currentTicks = Time.MinTicks;
-            _nextTicks = Time.MaxTicks;
+            _ticks = Time.MinTicks;
+            _nextTicks = Time.MinTicks;
 
             for (var i = 0; i < _cursors.Length; i++)
-            {
-                if (_cursors[i].Reset() && *_cursors[i].NextTicks < _nextTicks)
-                    _nextTicks = *_cursors[i].NextTicks;
-            }
+                _cursors[i].Reset();
         }
 
         public IFieldProxy<T> GetProxy<T>(int fieldId) where T : struct
@@ -70,9 +69,6 @@ namespace Minotaur.Cursors
 
         public void Dispose()
         {
-            for (var i = 0; i < _cursors.Length; i++)
-                _cursors[i].Dispose();
-
             _fields.Clear();
             Array.Clear(_cursors, 0, _cursors.Length);
         }

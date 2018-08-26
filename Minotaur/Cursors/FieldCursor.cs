@@ -1,200 +1,172 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Text;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using DotNetCross.Memory;
 using Minotaur.IO;
 using Minotaur.Native;
 
 namespace Minotaur.Cursors
 {
-    public unsafe class FieldCursor : IFieldCursor
+    [StructLayout(LayoutKind.Explicit, Size = 16)]
+    public unsafe struct FieldEntry
     {
-        private const int INDEX_SIZE = sizeof(long);
+        [FieldOffset(0)]
+        private long _ticks;
+        [FieldOffset(8)]
+        private ulong _value;
 
-        private readonly long* _snapshot;
-        protected readonly byte* snapshot;
-        private readonly int _entrySize;
-        private readonly byte* _buffer;
-        private readonly int _bufferSize;
-        private IStream _stream;
-
-        private byte* _offset;
-        private byte* _bufferEnd;
-
-        public DateTime Timestamp => *(DateTime*)_snapshot;
-
-        public long Ticks => *_snapshot;
-        public long* NextTicks => (long*)_offset;
-
-        public FieldCursor(
-            byte* snapshot, int entrySize,
-            byte* buffer, int bufferSize,
-            IStream stream)
+        public long Ticks
         {
-            _snapshot = (long*)snapshot;
-            this.snapshot = snapshot + INDEX_SIZE;
-            _entrySize = entrySize;
-            _buffer = buffer;
-            _bufferSize = bufferSize;
-            _stream = stream;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _ticks;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _ticks = value;
+        }
 
-            if (bufferSize % entrySize != 0)
-                throw new InvalidConstraintException("Buffer size has to be a multiple of entry size");
+        public ulong Value
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _value;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _value = value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T GetValue<T>() where T : struct
+        {
+            return Unsafe.Read<T>(Unsafe.AsPointer(ref _value));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetValue<T>(T value) where T : struct
+        {
+            Unsafe.Write(Unsafe.AsPointer(ref _value), value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetValue<T>(ref T value) where T : struct
+        {
+            Unsafe.Write(Unsafe.AsPointer(ref _value), ref value);
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FieldSnapshot
+    {
+        public FieldEntry Current;
+        public FieldEntry Next;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public abstract unsafe class FieldCursor<TStream> : IFieldCursor
+        where TStream : IStream
+    {
+        private readonly FieldSnapshot* _snaphot;
+        private readonly int _sizeOfFieldEntry;
+        private readonly TStream _stream;
+
+        public long Ticks
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _snaphot->Current.Ticks;
+        }
+
+        public long NextTicks
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _snaphot->Next.Ticks;
+        }
+
+        protected FieldCursor(FieldSnapshot* snaphot, TStream stream, int sizeOfField)
+        {
+            _snaphot = snaphot;
+            _stream = stream;
+            _sizeOfFieldEntry = sizeof(long) + sizeOfField;
+
+            if(_sizeOfFieldEntry > sizeof(FieldEntry))
+                throw new ArgumentOutOfRangeException(nameof(sizeOfField), "field type can't never be greater than 8 Bytes");
 
             Reset();
         }
 
-        public bool Next(long ticks)
+        public T GetValue<T>() where T : struct
         {
-            // Todo: maybe it's better to copy nextIndex into snapshot instead of always read buffer
-            if (ticks < *(long*)_offset) return _offset < _bufferEnd;
-
-            do
-            {
-                // Todo: Maybe It's better to copy snapshot memory with Buffer.CopyMemory call
-                var from = _offset;
-
-                *_snapshot = *(long*)from;
-                from += INDEX_SIZE;
-
-                _offset += _entrySize;
-                var i = -1;
-                while (from < _offset)
-                    *(snapshot + ++i) = *from++;
-
-                if (_offset >= _bufferEnd && !Read())
-                    return true;
-
-            } while (ticks >= *(long*)_offset);
-
-            return true;
+            // Todo: Check perf
+            //return Unsafe.Read<T>((ulong*) _snaphot + sizeof(long));
+            return _snaphot->Current.GetValue<T>();
         }
 
-        public bool Reset()
+        public void MoveNext(long ticks)
         {
-            _bufferEnd = _offset = _buffer;
-            *_snapshot = Time.MinTicks;
-            WriteWrongValue();
-
-            _stream.Reset();
-            return Read();
-        }
-
-        private bool Read()
-        {
-            _offset = _buffer;
-            var read = _stream.Read(_offset, _bufferSize);
-            if (read == 0)
+            while (ticks >= _snaphot->Next.Ticks)
             {
-                *(long*)_offset = Time.MaxTicks;
-                return false;
+                _snaphot->Current = _snaphot->Next;
+                if (_stream.Read((byte*) Unsafe.AsPointer(ref _snaphot->Next), _sizeOfFieldEntry) != _sizeOfFieldEntry)
+                    _snaphot->Next.Ticks = Time.MaxTicks;
             }
-
-            //if (read % this.entrySize != 0)
-            //	throw new CorruptedDataException("Data read isn't a multiple of entry size");
-
-            _bufferEnd = _buffer + read;
-            return true;
         }
+
+        public void Reset()
+        {
+            _snaphot->Current.Ticks = Time.MinTicks;
+            _snaphot->Current.Value = GetDefaultValue();
+            _snaphot->Next.Ticks = Time.MinTicks;
+            _snaphot->Next.Value = GetDefaultValue();
+            _stream.Reset();
+        }
+
+        protected abstract ulong GetDefaultValue();
 
         public void Dispose()
         {
-            Reset();
+            _stream.Dispose();
+        }
+    }
+
+    public unsafe class FieldCursor<T, TStream> : FieldCursor<TStream>, IFieldCursor<T>
+        where T : struct
+        where TStream : IStream
+    {
+        public FieldCursor(FieldSnapshot* snpashot, TStream stream)
+            : base(snpashot, stream, Marshal.SizeOf<T>()) { }
+
+        #region Implementation of IFieldProx<T>
+
+        public DateTime Timestamp
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => new DateTime(Ticks);
         }
 
-        protected virtual void WriteWrongValue()
+        public T Value
         {
-            var valueSize = _entrySize - INDEX_SIZE;
-            switch (valueSize)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => GetValue<T>();
+        }
+
+        #endregion
+
+        #region Overrides of FieldCursor<TStream>
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected sealed override ulong GetDefaultValue()
+        {
+            if (typeof(T) == typeof(double))
             {
-                case 2:
-                    *(ushort*)snapshot = 0;
-                    break;
-                case 4:
-                    *(uint*)snapshot = 0;
-                    break;
-                case 8:
-                    *(ulong*)snapshot = 0;
-                    break;
-                default:
-                    for (var i = 0; i < valueSize; i++)
-                        *(snapshot + i) = 0;
-                    break;
+                var v = double.NaN;
+                return *(ulong*)&v;
             }
+
+            if (typeof(T) == typeof(float))
+            {
+                var v = float.NaN;
+                return *(ulong*)&v;
+            }
+
+            return 0;
         }
 
-        public void Swith(IStream stream)
-        {
-            _stream = stream; // Todo be sure that it's never null
-            Read();
-        }
-    }
-
-    public unsafe class Int32Cursor : FieldCursor, IFieldCursor<int>
-    {
-        public Int32Cursor(byte* snapshot, byte* buffer, int bufferSize, IStream stream)
-            : base(snapshot, sizeof(Int32Entry), buffer, bufferSize, stream)
-        {
-        }
-
-        public int Value => *(int*)snapshot;
-    }
-
-    public unsafe class FloatCursor : FieldCursor, IFieldCursor<float>
-    {
-        public FloatCursor(byte* snapshot, byte* buffer, int bufferSize, IStream stream)
-            : base(snapshot, sizeof(FloatEntry), buffer, bufferSize, stream)
-        {
-
-        }
-
-        public float Value => *(float*)snapshot;
-
-        protected override void WriteWrongValue()
-        {
-            *(float*)snapshot = float.NaN;
-        }
-    }
-
-    public unsafe class Int64Cursor : FieldCursor, IFieldCursor<long>
-    {
-        public Int64Cursor(byte* snapshot, byte* buffer, int bufferSize, IStream stream)
-            : base(snapshot, sizeof(Int64Entry), buffer, bufferSize, stream)
-        {
-        }
-
-        public long Value => *(long*)snapshot;
-    }
-
-    public unsafe class DoubleCursor : FieldCursor, IFieldCursor<double>
-    {
-        public DoubleCursor(byte* snapshot, byte* buffer, int bufferSize, IStream stream)
-            : base(snapshot, sizeof(DoubleEntry), buffer, bufferSize, stream)
-        {
-
-        }
-
-        public double Value => *(double*)snapshot;
-
-        protected override void WriteWrongValue()
-        {
-            *(double*)snapshot = double.NaN;
-        }
-    }
-
-    public unsafe class DateTimeCursor : FieldCursor, IFieldCursor<DateTime>
-    {
-        protected DateTimeCursor(byte* snapshot, byte* buffer, int bufferSize, IStream stream)
-            : base(snapshot, sizeof(long), buffer, bufferSize, stream)
-        {
-
-        }
-
-        public DateTime Value => new DateTime(*(long*)snapshot);
-
-        protected override void WriteWrongValue()
-        {
-            *(long*)snapshot = DateTime.MinValue.Ticks;
-        }
+        #endregion
     }
 }

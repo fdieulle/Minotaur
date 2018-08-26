@@ -50,22 +50,22 @@ namespace Minotaur.Tests.Cursors
                 .Snap("08:00:06", "08:00:04", "Max", 12.6, 2e6, 13.4, 1e6);
 
             #region Prepare memory
-            var bufferSnapshotSize = sizeof(DoubleEntry) * 2 + sizeof(Int32Entry) * 2; // snapshot Field cursor requested size
+            var bufferSnapshotSize = sizeof(FieldSnapshot) * 4; // snapshot Field cursor requested size
             const int blockSize = 8192;
             const int fbs = 30;
             var bufferColumnStreamSize = (2 + 2) * blockSize; // buffer reader sizes
-            var bufferCursorSize = fbs.Floor(sizeof(DoubleEntry)) * 2 + fbs.Floor(sizeof(Int32Entry)) * 2; // field buffer sizes
-            var fullBufferSize = bufferSnapshotSize + bufferColumnStreamSize + bufferCursorSize;
+            
+            var fullBufferSize = bufferSnapshotSize + bufferColumnStreamSize;
 
             var buffer = Marshal.AllocHGlobal(fullBufferSize);
             try
             {
                 var pSnapFields = new Dictionary<int, IntPtr>
                 {
-                    {1, buffer},
-                    {2, buffer + sizeof(DoubleEntry)},
-                    {3, buffer + sizeof(DoubleEntry) + sizeof(Int32Entry)},
-                    {4, buffer + sizeof(DoubleEntry) + sizeof(Int32Entry) + sizeof(DoubleEntry)},
+                    {1, buffer + sizeof(FieldSnapshot) * 0},
+                    {2, buffer + sizeof(FieldSnapshot) * 1},
+                    {3, buffer + sizeof(FieldSnapshot) * 2},
+                    {4, buffer + sizeof(FieldSnapshot) * 3}
                 };
 
                 var pBufFields = new Dictionary<int, IntPtr>
@@ -74,14 +74,6 @@ namespace Minotaur.Tests.Cursors
                     {2, buffer + bufferSnapshotSize + blockSize * 1},
                     {3, buffer + bufferSnapshotSize + blockSize * 2},
                     {4, buffer + bufferSnapshotSize + blockSize * 3},
-                };
-
-                var pFieldBufFields = new Dictionary<int, IntPtr>
-                {
-                    {1, buffer + bufferSnapshotSize + bufferColumnStreamSize},
-                    {2, buffer + bufferSnapshotSize + bufferColumnStreamSize + fbs.Floor(sizeof(DoubleEntry))},
-                    {3, buffer + bufferSnapshotSize + bufferColumnStreamSize + fbs.Floor(sizeof(DoubleEntry)) + fbs.Floor(sizeof(Int32Entry))},
-                    {4, buffer + bufferSnapshotSize + bufferColumnStreamSize + fbs.Floor(sizeof(DoubleEntry)) + fbs.Floor(sizeof(Int32Entry)) + fbs.Floor(sizeof(DoubleEntry))},
                 };
 
                 #endregion
@@ -112,15 +104,15 @@ namespace Minotaur.Tests.Cursors
 
                 #endregion
 
-                var fieldCursors = new Dictionary<int, FieldCursor>
+                var fieldCursors = new Dictionary<int, FieldCursor<IStream>>
                 {
-                    {1, new DoubleCursor((byte*) pSnapFields[1], (byte*)pFieldBufFields[1], fbs.Floor(sizeof(DoubleEntry)), streams[1])},
-                    {2, new Int32Cursor((byte*) pSnapFields[2], (byte*)pFieldBufFields[2], fbs.Floor(sizeof(Int32Entry)), streams[2])},
-                    {3, new DoubleCursor((byte*) pSnapFields[3], (byte*)pFieldBufFields[3], fbs.Floor(sizeof(DoubleEntry)), streams[3])},
-                    {4, new Int32Cursor((byte*) pSnapFields[4], (byte*)pFieldBufFields[4], fbs.Floor(sizeof(Int32Entry)), streams[4])}
+                    {1, new FieldCursor<double, IStream>((FieldSnapshot*) pSnapFields[1], streams[1])},
+                    {2, new FieldCursor<int, IStream>((FieldSnapshot*) pSnapFields[2], streams[2])},
+                    {3, new FieldCursor<double, IStream>((FieldSnapshot*) pSnapFields[3], streams[3])},
+                    {4, new FieldCursor<int, IStream>((FieldSnapshot*) pSnapFields[4], streams[4])},
                 };
 
-                var cursor = new MultiFieldsCursor(fieldCursors);
+                var cursor = new MultiFieldsCursor<IStream>(fieldCursors);
 
                 snapshots.RunMoveNext(cursor);
             }

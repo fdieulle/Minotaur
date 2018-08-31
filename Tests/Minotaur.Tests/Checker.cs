@@ -1,5 +1,6 @@
 ﻿using System;
 using Minotaur.IO;
+using Minotaur.Native;
 using NUnit.Framework;
 
 namespace Minotaur.Tests
@@ -37,6 +38,20 @@ namespace Minotaur.Tests
             var pp = (byte*) p;
             for (var i = start; i < length; i++)
                 Assert.AreEqual(value, *(pp + i), $"At idx {i}");
+        }
+
+        public static void Check(this DoubleEntry[] x, DoubleEntry[] y)
+        {
+            Assert.AreEqual(x.Length, y.Length, "Length");
+            fixed (DoubleEntry* px = x)
+            fixed (DoubleEntry* py = y)
+            {
+                for (var i = 0; i < x.Length; i++)
+                {
+                    Assert.AreEqual((px + i)->ticks, (py + i)->ticks, "Ticks");
+                    Assert.AreEqual((px + i)->value, (py + i)->value, "Value");
+                }
+            }
         }
     }
 }

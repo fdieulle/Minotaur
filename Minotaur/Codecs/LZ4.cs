@@ -580,14 +580,14 @@ namespace Minotaur.Codecs
         {
             if (knownOutputLength)
             {
-                var length = LZ4_decompress_generic<EndOnInputSize, Full, NoDict>(input, output, inputLength, outputLength, 0, output, null, 0);
+                var length = LZ4_decompress_generic<EndOnInputSize, Full, NoDict>(ref input, ref output, inputLength, outputLength, 0, output, null, 0);
                 if (length != outputLength)
                     ThrowException(new ArgumentException("LZ4 block is corrupted, or invalid length has been given."));
                 return outputLength;
             }
             else
             {
-                var length = LZ4_decompress_generic<EndOnOutputSize, Full, WithPrefix64K>(input, output, inputLength, outputLength, 0, output - (64 * Bits.KILO_BYTE), null, 64 * Bits.KILO_BYTE);
+                var length = LZ4_decompress_generic<EndOnOutputSize, Full, WithPrefix64K>(ref input, ref output, inputLength, outputLength, 0, output - (64 * Bits.KILO_BYTE), null, 64 * Bits.KILO_BYTE);
                 if (length < 0)
                     ThrowException(new ArgumentException("LZ4 block is corrupted, or invalid length has been given."));
 
@@ -595,10 +595,18 @@ namespace Minotaur.Codecs
             }
         }
 
+        public static int Decode64(ref byte* input, int inputLength, ref byte* output, int remainOutputLength, int targetOutput)
+        {
+            return LZ4_decompress_generic<EndOnInputSize, Partial, NoDict>(ref input, ref output, inputLength, remainOutputLength,
+                targetOutput, output - (64 * Bits.KILO_BYTE), null, 64 * Bits.KILO_BYTE);
+        }
+
         private static readonly int[] dec32Table = new int[] { 4, 1, 2, 1, 4, 4, 4, 4 };
         private static readonly int[] dec64Table = new int[] { 0, 0, 0, -1, 0, 1, 2, 3 };
 
-        private static int LZ4_decompress_generic<TEndCondition, TEarlyEnd, TDictionaryType>(byte* source, byte* dest, int inputSize, int outputSize, int targetOutputSize, byte* lowPrefix, byte* dictStart, int dictSize)
+        private static int LZ4_decompress_generic<TEndCondition, TEarlyEnd, TDictionaryType>(
+            ref byte* source, ref byte* dest, int inputSize, int outputSize, int targetOutputSize, 
+            byte* lowPrefix, byte* dictStart, int dictSize)
             where TEndCondition : IEndConditionDirective
             where TEarlyEnd : IEarlyEndDirective
             where TDictionaryType : IDictionaryTypeDirective
@@ -657,6 +665,14 @@ namespace Minotaur.Codecs
 
                         if ((typeof(TEndCondition) == typeof(EndOnInputSize)) && (ip + length > iend))
                             goto _output_error;   /* Error : read attempt beyond end of input buffer */
+
+                        /* If it's a real partial read */
+                        if ((typeof(TEndCondition) == typeof(EndOnInputSize) && cpy < oend)
+                            || (typeof(TEndCondition) == typeof(EndOnOutputSize) && ip + length < iend)) 
+                        {
+                            ip -= length / 255 + 1; /* we roll back the begin of loop */
+                            break;
+                        }
                     }
                     else
                     {
@@ -784,11 +800,13 @@ namespace Minotaur.Codecs
             }
 
             /* end of decoding */
-            if (typeof(TEndCondition) == typeof(EndOnInputSize))
-                return (int)(op - dest);     /* Nb of output bytes decoded */
-            else
-                return (int)(ip - source);   /* Nb of input bytes read */
-
+            var result = typeof(TEndCondition) == typeof(EndOnInputSize)
+                ? (int) (op - dest) /* Nb of output bytes decoded */
+                : (int) (ip - source); /* Nb of input bytes read */
+            source = ip;
+            dest = op;
+            return result;
+            
             /* Overflow error detected */
             _output_error:
             return (int)(-(ip - source)) - 1;

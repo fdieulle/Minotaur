@@ -52,7 +52,6 @@ namespace Minotaur.Tests.Cursors
             #region Prepare memory
             var bufferSnapshotSize = sizeof(FieldSnapshot) * 4; // snapshot Field cursor requested size
             const int blockSize = 8192;
-            const int fbs = 30;
             var bufferColumnStreamSize = (2 + 2) * blockSize; // buffer reader sizes
             
             var fullBufferSize = bufferSnapshotSize + bufferColumnStreamSize;

@@ -9,7 +9,7 @@ namespace Minotaur.Codecs
     /// <summary>
     /// This implementation mainly comes from: https://github.com/ravendb/ravendb/blob/v4.1/src/Sparrow/Compression/LZ4.cs
     /// </summary>
-    public unsafe class Lz4
+    public unsafe class Lz4Raven
     {
         public const int ACCELERATION_DEFAULT = 1;
 
@@ -32,14 +32,25 @@ namespace Minotaur.Codecs
 
         private const uint LZ4_MAX_INPUT_SIZE = 0x7E000000;  /* 2 113 929 216 bytes */
 
-        /// <summary>
-        /// LZ4_MEMORY_USAGE :
-        /// Memory usage formula : N->2^N Bytes(examples : 10 -> 1KB; 12 -> 4KB ; 16 -> 64KB; 20 -> 1MB; etc.)
-        /// Increasing memory usage improves compression ratio
-        /// Reduced memory usage can improve speed, due to cache effect
-        /// Default value is 14, for 16KB, which nicely fits into Intel x86 L1 cache
-        /// </summary>
+        /*-************************************
+        *  Tuning parameter
+        **************************************/
+        /*!
+         * LZ4_MEMORY_USAGE :
+         * Memory usage formula : N->2^N Bytes (examples : 10 -> 1KB; 12 -> 4KB ; 16 -> 64KB; 20 -> 1MB; etc.)
+         * Increasing memory usage improves compression ratio
+         * Reduced memory usage may improve speed, thanks to cache effect
+         * Default value is 14, for 16KB, which nicely fits into Intel x86 L1 cache
+         */
         private const int LZ4_MEMORY_USAGE = 14;
+
+        /*-************************************
+         *  Private definitions
+         **************************************
+         * Do not use these definitions.
+         * They are exposed to allow static allocation of `LZ4_stream_t` and `LZ4_streamDecode_t`.
+         * Using these definitions will expose code to API and/or ABI break in future versions of the library.
+         **************************************/
         private const int LZ4_HASHLOG = LZ4_MEMORY_USAGE - 2;
         private const int HASH_SIZE_U32 = 1 << LZ4_HASHLOG;
         private const int MAX_INPUT_LENGTH_PER_SEGMENT = int.MaxValue/2;
@@ -47,6 +58,7 @@ namespace Minotaur.Codecs
         private interface ILimitedOutputDirective { };
         private struct NotLimited : ILimitedOutputDirective { };
         private struct LimitedOutput : ILimitedOutputDirective { };
+        private struct LimitedDestSize : ILimitedOutputDirective { };
 
         private interface IDictionaryTypeDirective { };
         private struct NoDict : IDictionaryTypeDirective { };
@@ -89,7 +101,7 @@ namespace Minotaur.Codecs
             // LZ4 can handle a bit less then 2GB. we will handle the compression/decompression devided to parts for above 1GB inputs
             if (inputLength < MAX_INPUT_LENGTH_PER_SEGMENT && outputLength < MAX_INPUT_LENGTH_PER_SEGMENT)
             {
-                return Encode64(input, output, (int)inputLength, (int)outputLength, acceleration);
+                return Encode64(ref input, ref output, (int)inputLength, (int)outputLength, acceleration);
             }
 
             long totalOutputSize = 0;
@@ -102,7 +114,7 @@ namespace Minotaur.Codecs
 
                 int remaining = (outputLength - totalOutputSize) > int.MaxValue ? int.MaxValue : (int)(outputLength - totalOutputSize);
 
-                totalOutputSize += Encode64(input + readPosition, output + totalOutputSize, partInputLength, remaining, acceleration);
+                totalOutputSize += Encode64(ref input, ref output, partInputLength, remaining, acceleration);
 
                 readPosition += partInputLength;
             }
@@ -111,8 +123,8 @@ namespace Minotaur.Codecs
         }
 
         public static int Encode64(
-                byte* input,
-                byte* output,
+                ref byte* input,
+                ref byte* output,
                 int inputLength,
                 int outputLength,
                 int acceleration = ACCELERATION_DEFAULT)
@@ -125,17 +137,55 @@ namespace Minotaur.Codecs
             if (outputLength >= MaximumOutputLength(inputLength))
             {
                 if (inputLength < LZ4_64_KLIMIT)
-                    return LZ4_compress_generic<NotLimited, ByU16, NoDict, NoDictIssue>(&ctx, input, output, inputLength, 0, acceleration);
+                    return LZ4_compress_generic<NotLimited, ByU16, NoDict, NoDictIssue>(&ctx, ref input, ref output, inputLength, 0, acceleration);
                 else
-                    return LZ4_compress_generic<NotLimited, ByU32, NoDict, NoDictIssue>(&ctx, input, output, inputLength, 0, acceleration);
+                    return LZ4_compress_generic<NotLimited, ByU32, NoDict, NoDictIssue>(&ctx, ref input, ref output, inputLength, 0, acceleration);
             }
             else
             {
                 if (inputLength < LZ4_64_KLIMIT)
-                    return LZ4_compress_generic<LimitedOutput, ByU16, NoDict, NoDictIssue>(&ctx, input, output, inputLength, outputLength, acceleration);
+                    return LZ4_compress_generic<LimitedOutput, ByU16, NoDict, NoDictIssue>(&ctx, ref input, ref output, inputLength, outputLength, acceleration);
                 else
-                    return LZ4_compress_generic<LimitedOutput, ByU32, NoDict, NoDictIssue>(&ctx, input, output, inputLength, outputLength, acceleration);
+                    return LZ4_compress_generic<LimitedOutput, ByU32, NoDict, NoDictIssue>(&ctx, ref input, ref output, inputLength, outputLength, acceleration);
             }
+        }
+
+        public static int Encode64(
+            ref byte* input,
+            ref byte* output,
+            int inputLength,
+            int outputLength,
+            int outputBlockLength,
+            int acceleration = ACCELERATION_DEFAULT)
+        {
+            if (acceleration < 1)
+                acceleration = ACCELERATION_DEFAULT;
+
+            Lz4StreamTInternal ctx = new Lz4StreamTInternal();
+            int wrote = 0;
+            var inputEnd = input + inputLength;
+            if (outputLength >= MaximumOutputLength(inputLength))
+            {
+                if (inputLength < LZ4_64_KLIMIT)
+                {
+                    while (wrote < outputLength)
+                        wrote += LZ4_compress_generic<NotLimited, ByU16, NoDict, NoDictIssue>(&ctx, ref input, ref output, (int)(inputEnd - input), outputBlockLength, acceleration);
+                }
+                else
+                {
+                    return LZ4_compress_generic<NotLimited, ByU32, NoDict, NoDictIssue>(&ctx, ref input, ref output, (int)(inputEnd - input), 0, acceleration);
+                }
+            }
+            else
+            {
+                if (inputLength < LZ4_64_KLIMIT)
+                    while (input < inputEnd)
+                        wrote += LZ4_compress_generic<LimitedOutput, ByU16, NoDict, NoDictIssue>(&ctx, ref input, ref output, (int)(inputEnd - input), outputBlockLength, acceleration);
+                else
+                    return LZ4_compress_generic<LimitedOutput, ByU32, NoDict, NoDictIssue>(&ctx, ref input, ref output, inputLength, outputLength, acceleration);
+            }
+
+            return wrote;
         }
 
         /// <summary>Gets maximum the length of the output.</summary>
@@ -146,7 +196,7 @@ namespace Minotaur.Codecs
             return size + (size / 255) + 16;
         }
 
-        private static int LZ4_compress_generic<TLimited, TTableType, TDictionaryType, TDictionaryIssue>(Lz4StreamTInternal* dictPtr, byte* source, byte* dest, int inputSize, int maxOutputSize, int acceleration)
+        private static int LZ4_compress_generic<TLimited, TTableType, TDictionaryType, TDictionaryIssue>(Lz4StreamTInternal* dictPtr, ref byte* source, ref byte* dest, int inputSize, int maxOutputSize, int acceleration)
             where TLimited : ILimitedOutputDirective
             where TTableType : ITableTypeDirective
             where TDictionaryType : IDictionaryTypeDirective
@@ -172,6 +222,7 @@ namespace Minotaur.Codecs
             byte* olimit = op + maxOutputSize;
 
             // Init conditions
+            if (typeof(TLimited) == typeof(LimitedDestSize)) olimit -= LASTLITERALS; /* Hack for support LZ4 format restriction */
             if (inputSize > LZ4_MAX_INPUT_SIZE) return 0;   // Unsupported input size, too large (or negative)
 
             byte* @base;
@@ -197,6 +248,7 @@ namespace Minotaur.Codecs
             if ((typeof(TTableType) == typeof(ByU16)) && (inputSize >= LZ4_64_KLIMIT)) // Size too large (not within 64K limit)
                 return 0;
 
+            if (typeof(TLimited) == typeof(LimitedOutput)) olimit -= LASTLITERALS;
             if (inputSize < LZ4_MIN_LENGTH) // Input too small, no compression (all literals)
                 goto _last_literals;
 
@@ -274,8 +326,14 @@ namespace Minotaur.Codecs
                     int litLength = (int)(ip - anchor);
                     token = op++;
 
-                    if ((typeof(TLimited) == typeof(LimitedOutput)) && (op + litLength + (2 + 1 + LASTLITERALS) + (litLength / 255) > olimit))
-                        return 0;   /* Check output limit */
+                    /* Check output limit */
+                    if ((typeof(TLimited) == typeof(LimitedOutput)) &&
+                        (op + litLength + (litLength / 255) + sizeof(ushort) > olimit))
+                    {
+                        op = token;
+                        ip = anchor;
+                        goto _skip_last_literals;
+                    }
 
                     if (litLength >= RUN_MASK)
                     {
@@ -396,9 +454,7 @@ namespace Minotaur.Codecs
 
             /* Encode Last Literals */
             {
-                int lastRun = (int)(iend - anchor);
-                if ((typeof(TLimited) == typeof(LimitedOutput)) && ((op - dest) + lastRun + 1 + ((lastRun + 255 - RUN_MASK) / 255) > maxOutputSize))
-                    return 0;   // Check output limit;
+                int lastRun = typeof(TLimited) == typeof(LimitedOutput) ? maxOutputSize - (int)(op - dest) - 1 : (int)(iend - anchor);
 
                 if (lastRun >= RUN_MASK)
                 {
@@ -417,9 +473,17 @@ namespace Minotaur.Codecs
 
                 Unsafe.CopyBlock(op, anchor, (uint)lastRun);
                 op += lastRun;
+                ip += lastRun;
             }
 
-            return (int)(op - dest);
+            _skip_last_literals:
+
+            {
+                var result = (int)(op - dest);
+                source = ip;
+                dest = op;
+                return result;
+            }
         }
 
 

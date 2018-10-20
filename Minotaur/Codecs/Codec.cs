@@ -30,7 +30,7 @@ namespace Minotaur.Codecs
         {
             if (value < 32UL) // 5 bits (1 byte >> 3)
             {
-                *(pTo++) = (byte)((0 << 5) | value);
+                *pTo++ = (byte)((0 << 5) | value);
 #if Debug
                 countU64[0]++;
 #endif
@@ -38,8 +38,8 @@ namespace Minotaur.Codecs
             }
             if (value < 8192UL) // 13 bits (2 bytes >> 3)
             {
-                *(pTo++) = (byte)((1 << 5) | ((value & 0x1f00) >> 8));
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)((1 << 5) | ((value & 0x1f00) >> 8));
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 countU64[1]++;
 #endif
@@ -47,9 +47,9 @@ namespace Minotaur.Codecs
             }
             if (value < 2097152UL) // 21 bits (3 bytes >> 3)
             {
-                *(pTo++) = (byte)(2 << 5 | ((value & 0x1f0000) >> 16));
-                *(pTo++) = (byte)((value & 0xff00) >> 8);
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)(2 << 5 | ((value & 0x1f0000) >> 16));
+                *pTo++ = (byte)((value & 0xff00) >> 8);
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 countU64[2]++;
 #endif
@@ -57,10 +57,10 @@ namespace Minotaur.Codecs
             }
             if (value < 536870912UL) // 29 bits (4 bytes >> 3)
             {
-                *(pTo++) = (byte)(3 << 5 | ((value & 0x1f000000) >> 24));
-                *(pTo++) = (byte)((value & 0xff0000) >> 16);
-                *(pTo++) = (byte)((value & 0xff00) >> 8);
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)(3 << 5 | ((value & 0x1f000000) >> 24));
+                *pTo++ = (byte)((value & 0xff0000) >> 16);
+                *pTo++ = (byte)((value & 0xff00) >> 8);
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 countU64[3]++;
 #endif
@@ -68,11 +68,11 @@ namespace Minotaur.Codecs
             }
             if (value < 137438953472UL) // 37 bits (5 bytes >> 3)
             {
-                *(pTo++) = (byte)(4 << 5 | ((value & 0x1f00000000) >> 32));
-                *(pTo++) = (byte)((value & 0xff000000) >> 24);
-                *(pTo++) = (byte)((value & 0xff0000) >> 16);
-                *(pTo++) = (byte)((value & 0xff00) >> 8);
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)(4 << 5 | ((value & 0x1f00000000) >> 32));
+                *pTo++ = (byte)((value & 0xff000000) >> 24);
+                *pTo++ = (byte)((value & 0xff0000) >> 16);
+                *pTo++ = (byte)((value & 0xff00) >> 8);
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 countU64[4]++;
 #endif
@@ -80,12 +80,12 @@ namespace Minotaur.Codecs
             }
             if (value < 35184372088832UL) // 45 bits (6 bytes >> 3)
             {
-                *(pTo++) = (byte)(5 << 5 | ((value & 0x1f0000000000) >> 40));
-                *(pTo++) = (byte)((value & 0xff00000000) >> 32);
-                *(pTo++) = (byte)((value & 0xff000000) >> 24);
-                *(pTo++) = (byte)((value & 0xff0000) >> 16);
-                *(pTo++) = (byte)((value & 0xff00) >> 8);
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)(5 << 5 | ((value & 0x1f0000000000) >> 40));
+                *pTo++ = (byte)((value & 0xff00000000) >> 32);
+                *pTo++ = (byte)((value & 0xff000000) >> 24);
+                *pTo++ = (byte)((value & 0xff0000) >> 16);
+                *pTo++ = (byte)((value & 0xff00) >> 8);
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 countU64[5]++;
 #endif
@@ -93,13 +93,13 @@ namespace Minotaur.Codecs
             }
             if (value < 9007199254740992UL) // 53 bits (7 bytes >> 3)
             {
-                *(pTo++) = (byte)(6 << 5 | ((value & 0x1f000000000000) >> 48));
-                *(pTo++) = (byte)((value & 0xff0000000000) >> 40);
-                *(pTo++) = (byte)((value & 0xff00000000) >> 32);
-                *(pTo++) = (byte)((value & 0xff000000) >> 24);
-                *(pTo++) = (byte)((value & 0xff0000) >> 16);
-                *(pTo++) = (byte)((value & 0xff00) >> 8);
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)(6 << 5 | ((value & 0x1f000000000000) >> 48));
+                *pTo++ = (byte)((value & 0xff0000000000) >> 40);
+                *pTo++ = (byte)((value & 0xff00000000) >> 32);
+                *pTo++ = (byte)((value & 0xff000000) >> 24);
+                *pTo++ = (byte)((value & 0xff0000) >> 16);
+                *pTo++ = (byte)((value & 0xff00) >> 8);
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 countU64[6]++;
 #endif
@@ -107,15 +107,15 @@ namespace Minotaur.Codecs
             }
 
             // 64 bits (8 bytes full)
-            *(pTo++) = (7 << 5);
-            *(pTo++) = (byte)((value & 0xff00000000000000) >> 56);
-            *(pTo++) = (byte)((value & 0xff000000000000) >> 48);
-            *(pTo++) = (byte)((value & 0xff0000000000) >> 40);
-            *(pTo++) = (byte)((value & 0xff00000000) >> 32);
-            *(pTo++) = (byte)((value & 0xff000000) >> 24);
-            *(pTo++) = (byte)((value & 0xff0000) >> 16);
-            *(pTo++) = (byte)((value & 0xff00) >> 8);
-            *(pTo++) = (byte)(value & 0xff);
+            *pTo++ = 7 << 5;
+            *pTo++ = (byte)((value & 0xff00000000000000) >> 56);
+            *pTo++ = (byte)((value & 0xff000000000000) >> 48);
+            *pTo++ = (byte)((value & 0xff0000000000) >> 40);
+            *pTo++ = (byte)((value & 0xff00000000) >> 32);
+            *pTo++ = (byte)((value & 0xff000000) >> 24);
+            *pTo++ = (byte)((value & 0xff0000) >> 16);
+            *pTo++ = (byte)((value & 0xff00) >> 8);
+            *pTo++ = (byte)(value & 0xff);
 #if Debug
             countU64[8]++;
 #endif
@@ -140,23 +140,23 @@ namespace Minotaur.Codecs
 
             if (length == 4)
             {
-                var i1 = (*pFrom++ & 0x1F);
+                var i1 = *pFrom++ & 0x1F;
                 var i2 = *pFrom++ << 24 | *pFrom++ << 16 | *pFrom++ << 8 | *pFrom++;
-                return (((ulong)i1 << 32) | (uint)i2);
+                return ((ulong)i1 << 32) | (uint)i2;
             }
 
             if (length == 5)
             {
                 var i1 = (*pFrom++ & 0x1F) << 8 | *pFrom++;
                 var i2 = *pFrom++ << 24 | *pFrom++ << 16 | *pFrom++ << 8 | *pFrom++;
-                return (((ulong)i1 << 32) | (uint)i2);
+                return ((ulong)i1 << 32) | (uint)i2;
             }
 
             if (length == 6)
             {
                 var i1 = (*pFrom++ & 0x1F) << 16 | *pFrom++ << 8 | *pFrom++;
                 var i2 = *pFrom++ << 24 | *pFrom++ << 16 | *pFrom++ << 8 | *pFrom++;
-                return (((ulong)i1 << 32) | (uint)i2);
+                return ((ulong)i1 << 32) | (uint)i2;
             }
             else
             {
@@ -192,18 +192,18 @@ namespace Minotaur.Codecs
             {
                 sign = 1;
                 if (value != long.MinValue)
-                    uvalue = (ulong)(-value);
+                    uvalue = (ulong)-value;
                 else
                 {
-                    *(pTo++) = (byte)((sign << 7) | (7 << 4));
-                    *(pTo++) = (byte)((uvalue & 0xff00000000000000) >> 56);
-                    *(pTo++) = (byte)((uvalue & 0xff000000000000) >> 48);
-                    *(pTo++) = (byte)((uvalue & 0xff0000000000) >> 40);
-                    *(pTo++) = (byte)((uvalue & 0xff00000000) >> 32);
-                    *(pTo++) = (byte)((uvalue & 0xff000000) >> 24);
-                    *(pTo++) = (byte)((uvalue & 0xff0000) >> 16);
-                    *(pTo++) = (byte)((uvalue & 0xff00) >> 8);
-                    *(pTo++) = (byte)(uvalue & 0xff);
+                    *pTo++ = (byte)((sign << 7) | (7 << 4));
+                    *pTo++ = (byte)((uvalue & 0xff00000000000000) >> 56);
+                    *pTo++ = (byte)((uvalue & 0xff000000000000) >> 48);
+                    *pTo++ = (byte)((uvalue & 0xff0000000000) >> 40);
+                    *pTo++ = (byte)((uvalue & 0xff00000000) >> 32);
+                    *pTo++ = (byte)((uvalue & 0xff000000) >> 24);
+                    *pTo++ = (byte)((uvalue & 0xff0000) >> 16);
+                    *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+                    *pTo++ = (byte)(uvalue & 0xff);
 #if Debug
                     count64[8]++;
 #endif
@@ -213,7 +213,7 @@ namespace Minotaur.Codecs
 
             if (uvalue < 16UL) // 4 bits (1 byte >> 4)
             {
-                *(pTo++) = (byte)((sign << 7) | (byte)(uvalue & 0xf));
+                *pTo++ = (byte)((sign << 7) | (byte)(uvalue & 0xf));
 #if Debug
                 count64[0]++;
 #endif
@@ -221,8 +221,8 @@ namespace Minotaur.Codecs
             }
             if (uvalue < 4096UL) // 12 bits (2 bytes >> 4)
             {
-                *(pTo++) = (byte)((sign << 7) | (1 << 4) | (byte)((uvalue & 0xf00) >> 8));
-                *(pTo++) = (byte)(uvalue & 0xff);
+                *pTo++ = (byte)((sign << 7) | (1 << 4) | (byte)((uvalue & 0xf00) >> 8));
+                *pTo++ = (byte)(uvalue & 0xff);
 #if Debug
                 count64[1]++;
 #endif
@@ -230,9 +230,9 @@ namespace Minotaur.Codecs
             }
             if (uvalue < 1048576UL) // 20 bits (3 bytes >> 4)
             {
-                *(pTo++) = (byte)((sign << 7) | (2 << 4) | (byte)((uvalue & 0xf0000) >> 16));
-                *(pTo++) = (byte)((uvalue & 0xff00) >> 8);
-                *(pTo++) = (byte)(uvalue & 0xff);
+                *pTo++ = (byte)((sign << 7) | (2 << 4) | (byte)((uvalue & 0xf0000) >> 16));
+                *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+                *pTo++ = (byte)(uvalue & 0xff);
 #if Debug
                 count64[2]++;
 #endif
@@ -240,10 +240,10 @@ namespace Minotaur.Codecs
             }
             if (uvalue < 268435456UL) // 28 bits (4 bytes >> 4)
             {
-                *(pTo++) = (byte)((sign << 7) | (3 << 4) | (byte)((uvalue & 0xf000000) >> 24));
-                *(pTo++) = (byte)((uvalue & 0xff0000) >> 16);
-                *(pTo++) = (byte)((uvalue & 0xff00) >> 8);
-                *(pTo++) = (byte)(uvalue & 0xff);
+                *pTo++ = (byte)((sign << 7) | (3 << 4) | (byte)((uvalue & 0xf000000) >> 24));
+                *pTo++ = (byte)((uvalue & 0xff0000) >> 16);
+                *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+                *pTo++ = (byte)(uvalue & 0xff);
 #if Debug
                 count64[3]++;
 #endif
@@ -251,11 +251,11 @@ namespace Minotaur.Codecs
             }
             if (uvalue < 68719476736UL) // 36 bits (5 bytes >> 4)
             {
-                *(pTo++) = (byte)((sign << 7) | (4 << 4) | (byte)((uvalue & 0xf00000000) >> 32));
-                *(pTo++) = (byte)((uvalue & 0xff000000) >> 24);
-                *(pTo++) = (byte)((uvalue & 0xff0000) >> 16);
-                *(pTo++) = (byte)((uvalue & 0xff00) >> 8);
-                *(pTo++) = (byte)(uvalue & 0xff);
+                *pTo++ = (byte)((sign << 7) | (4 << 4) | (byte)((uvalue & 0xf00000000) >> 32));
+                *pTo++ = (byte)((uvalue & 0xff000000) >> 24);
+                *pTo++ = (byte)((uvalue & 0xff0000) >> 16);
+                *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+                *pTo++ = (byte)(uvalue & 0xff);
 #if Debug
                 count64[4]++;
 #endif
@@ -263,12 +263,12 @@ namespace Minotaur.Codecs
             }
             if (uvalue < 17592186044416UL) // 44 bits (6 bytes >> 4)
             {
-                *(pTo++) = (byte)((sign << 7) | (5 << 4) | (byte)((uvalue & 0xf0000000000) >> 40));
-                *(pTo++) = (byte)((uvalue & 0xff00000000) >> 32);
-                *(pTo++) = (byte)((uvalue & 0xff000000) >> 24);
-                *(pTo++) = (byte)((uvalue & 0xff0000) >> 16);
-                *(pTo++) = (byte)((uvalue & 0xff00) >> 8);
-                *(pTo++) = (byte)(uvalue & 0xff);
+                *pTo++ = (byte)((sign << 7) | (5 << 4) | (byte)((uvalue & 0xf0000000000) >> 40));
+                *pTo++ = (byte)((uvalue & 0xff00000000) >> 32);
+                *pTo++ = (byte)((uvalue & 0xff000000) >> 24);
+                *pTo++ = (byte)((uvalue & 0xff0000) >> 16);
+                *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+                *pTo++ = (byte)(uvalue & 0xff);
 #if Debug
                 count64[5]++;
 #endif
@@ -276,28 +276,28 @@ namespace Minotaur.Codecs
             }
             if (uvalue < 4503599627370496UL) // 52 bits (7 bytes >> 4)
             {
-                *(pTo++) = (byte)((sign << 7) | (6 << 4) | (byte)((uvalue & 0xf000000000000) >> 48));
-                *(pTo++) = (byte)((uvalue & 0xff0000000000) >> 40);
-                *(pTo++) = (byte)((uvalue & 0xff00000000) >> 32);
-                *(pTo++) = (byte)((uvalue & 0xff000000) >> 24);
-                *(pTo++) = (byte)((uvalue & 0xff0000) >> 16);
-                *(pTo++) = (byte)((uvalue & 0xff00) >> 8);
-                *(pTo++) = (byte)(uvalue & 0xff);
+                *pTo++ = (byte)((sign << 7) | (6 << 4) | (byte)((uvalue & 0xf000000000000) >> 48));
+                *pTo++ = (byte)((uvalue & 0xff0000000000) >> 40);
+                *pTo++ = (byte)((uvalue & 0xff00000000) >> 32);
+                *pTo++ = (byte)((uvalue & 0xff000000) >> 24);
+                *pTo++ = (byte)((uvalue & 0xff0000) >> 16);
+                *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+                *pTo++ = (byte)(uvalue & 0xff);
 #if Debug
                 count64[6]++;
 #endif
                 return 7;
             }
 
-            *(pTo++) = (byte)((sign << 7) | (7 << 4));
-            *(pTo++) = (byte)((uvalue & 0xff00000000000000) >> 56);
-            *(pTo++) = (byte)((uvalue & 0xff000000000000) >> 48);
-            *(pTo++) = (byte)((uvalue & 0xff0000000000) >> 40);
-            *(pTo++) = (byte)((uvalue & 0xff00000000) >> 32);
-            *(pTo++) = (byte)((uvalue & 0xff000000) >> 24);
-            *(pTo++) = (byte)((uvalue & 0xff0000) >> 16);
-            *(pTo++) = (byte)((uvalue & 0xff00) >> 8);
-            *(pTo++) = (byte)(uvalue & 0xff);
+            *pTo++ = (byte)((sign << 7) | (7 << 4));
+            *pTo++ = (byte)((uvalue & 0xff00000000000000) >> 56);
+            *pTo++ = (byte)((uvalue & 0xff000000000000) >> 48);
+            *pTo++ = (byte)((uvalue & 0xff0000000000) >> 40);
+            *pTo++ = (byte)((uvalue & 0xff00000000) >> 32);
+            *pTo++ = (byte)((uvalue & 0xff000000) >> 24);
+            *pTo++ = (byte)((uvalue & 0xff0000) >> 16);
+            *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+            *pTo++ = (byte)(uvalue & 0xff);
 #if Debug
             count64[8]++;
 #endif
@@ -321,7 +321,7 @@ namespace Minotaur.Codecs
                     return sign * (((*pFrom++ & 0xf) << 24) | (*pFrom++ << 16) | (*pFrom++ << 8) | *pFrom++);
                 case 4:
                     {
-                        var i1 = (*pFrom++ & 0xf);
+                        var i1 = *pFrom++ & 0xf;
                         var i2 = (*pFrom++ << 24) | (*pFrom++ << 16) | (*pFrom++ << 8) | *pFrom++;
                         return sign * (long)(((ulong)i1 << 32) | (uint)i2);
                     }
@@ -362,7 +362,7 @@ namespace Minotaur.Codecs
         {
             if (value < 64U) // 6 bits (1 byte >> 2)
             {
-                *(pTo++) = (byte)(value & 0x3f);
+                *pTo++ = (byte)(value & 0x3f);
 #if Debug
                 countU32[0]++;
 #endif
@@ -370,8 +370,8 @@ namespace Minotaur.Codecs
             }
             if (value < 16384U) // 14 bits (2 bytes >> 2)
             {
-                *(pTo++) = (byte)((1 << 6) | ((value & 0x3f00) >> 8));
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)((1 << 6) | ((value & 0x3f00) >> 8));
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 countU32[1]++;
 #endif
@@ -379,9 +379,9 @@ namespace Minotaur.Codecs
             }
             if (value < 4194304U) // 22 bits (3 bytes >> 2)
             {
-                *(pTo++) = (byte)(2 << 6 | ((value & 0x3f0000) >> 16));
-                *(pTo++) = (byte)((value & 0xff00) >> 8);
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)(2 << 6 | ((value & 0x3f0000) >> 16));
+                *pTo++ = (byte)((value & 0xff00) >> 8);
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 countU32[2]++;
 #endif
@@ -389,11 +389,11 @@ namespace Minotaur.Codecs
             }
 
             // 32 bits full 4 bytes size
-            *(pTo++) = 3 << 6;
-            *(pTo++) = (byte)((value & 0xff000000) >> 24);
-            *(pTo++) = (byte)((value & 0xff0000) >> 16);
-            *(pTo++) = (byte)((value & 0xff00) >> 8);
-            *(pTo++) = (byte)(value & 0xff);
+            *pTo++ = 3 << 6;
+            *pTo++ = (byte)((value & 0xff000000) >> 24);
+            *pTo++ = (byte)((value & 0xff0000) >> 16);
+            *pTo++ = (byte)((value & 0xff00) >> 8);
+            *pTo++ = (byte)(value & 0xff);
 #if Debug
             countU32[4]++;
 #endif
@@ -440,11 +440,11 @@ namespace Minotaur.Codecs
                     value = -value;
                 else
                 {
-                    *(pTo++) = (byte)((sign << 7) | (3 << 5));
-                    *(pTo++) = (byte)((value & 0xff000000) >> 24);
-                    *(pTo++) = (byte)((value & 0xff0000) >> 16);
-                    *(pTo++) = (byte)((value & 0xff00) >> 8);
-                    *(pTo++) = (byte)(value & 0xff);
+                    *pTo++ = (byte)((sign << 7) | (3 << 5));
+                    *pTo++ = (byte)((value & 0xff000000) >> 24);
+                    *pTo++ = (byte)((value & 0xff0000) >> 16);
+                    *pTo++ = (byte)((value & 0xff00) >> 8);
+                    *pTo++ = (byte)(value & 0xff);
 #if Debug
                     count32[4]++;
 #endif
@@ -454,7 +454,7 @@ namespace Minotaur.Codecs
 
             if (value < 32) // 5 bits (1 byte >> 3)
             {
-                *(pTo++) = (byte)((sign << 7) | value & 0x1f);
+                *pTo++ = (byte)((sign << 7) | value & 0x1f);
 #if Debug
                 count32[2]++;
 #endif
@@ -463,8 +463,8 @@ namespace Minotaur.Codecs
 
             if (value < 8192) // 13 bits (2 bytes >> 3)
             {
-                *(pTo++) = (byte)((sign << 7) | (1 << 5) | ((value & 0x1f00) >> 8));
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)((sign << 7) | (1 << 5) | ((value & 0x1f00) >> 8));
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 count32[1]++;
 #endif
@@ -473,9 +473,9 @@ namespace Minotaur.Codecs
 
             if (value < 2097152) // 21 bits (3 bytes >> 3)
             {
-                *(pTo++) = (byte)((sign << 7) | (2 << 5) | ((value & 0x1f0000) >> 16));
-                *(pTo++) = (byte)((value & 0xff00) >> 8);
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)((sign << 7) | (2 << 5) | ((value & 0x1f0000) >> 16));
+                *pTo++ = (byte)((value & 0xff00) >> 8);
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 count32[2]++;
 #endif
@@ -483,11 +483,11 @@ namespace Minotaur.Codecs
             }
 
             // 32 bits full 4 bytes size
-            *(pTo++) = (byte)((sign << 7) | (3 << 5));
-            *(pTo++) = (byte)((value & 0xff000000) >> 24);
-            *(pTo++) = (byte)((value & 0xff0000) >> 16);
-            *(pTo++) = (byte)((value & 0xff00) >> 8);
-            *(pTo++) = (byte)(value & 0xff);
+            *pTo++ = (byte)((sign << 7) | (3 << 5));
+            *pTo++ = (byte)((value & 0xff000000) >> 24);
+            *pTo++ = (byte)((value & 0xff0000) >> 16);
+            *pTo++ = (byte)((value & 0xff00) >> 8);
+            *pTo++ = (byte)(value & 0xff);
 #if Debug
             count32[4]++;
 #endif
@@ -509,7 +509,7 @@ namespace Minotaur.Codecs
                 return sign * (((*pFrom++ & 0x1F) << 16) | *pFrom++ << 8 | *pFrom++);
 
             pFrom++;
-            var value = (*pFrom++ << 24 | *pFrom++ << 16 | *pFrom++ << 8 | *pFrom++);
+            var value = *pFrom++ << 24 | *pFrom++ << 16 | *pFrom++ << 8 | *pFrom++;
             return value == int.MinValue ? int.MinValue : sign * value;
         }
 
@@ -533,11 +533,11 @@ namespace Minotaur.Codecs
                     value = -value;
                 else
                 {
-                    *(pTo++) = (byte)((f << 7) | (sign << 6) | (3 << 4));
-                    *(pTo++) = (byte)((value & 0xff000000) >> 24);
-                    *(pTo++) = (byte)((value & 0xff0000) >> 16);
-                    *(pTo++) = (byte)((value & 0xff00) >> 8);
-                    *(pTo++) = (byte)(value & 0xff);
+                    *pTo++ = (byte)((f << 7) | (sign << 6) | (3 << 4));
+                    *pTo++ = (byte)((value & 0xff000000) >> 24);
+                    *pTo++ = (byte)((value & 0xff0000) >> 16);
+                    *pTo++ = (byte)((value & 0xff00) >> 8);
+                    *pTo++ = (byte)(value & 0xff);
 #if Debug
                     count32[4]++;
 #endif
@@ -547,7 +547,7 @@ namespace Minotaur.Codecs
 
             if (value < 16) // 4 bits (1 byte >> 4)
             {
-                *(pTo++) = (byte)((f << 7) | (sign << 6) | value & 0xf);
+                *pTo++ = (byte)((f << 7) | (sign << 6) | value & 0xf);
 #if Debug
                 count32[0]++;
 #endif
@@ -555,8 +555,8 @@ namespace Minotaur.Codecs
             }
             if (value < 4096) // 12 bits (2 bytes >> 4)
             {
-                *(pTo++) = (byte)((f << 7) | (sign << 6) | (1 << 4) | ((value & 0xf00) >> 8));
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)((f << 7) | (sign << 6) | (1 << 4) | ((value & 0xf00) >> 8));
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 count32[1]++;
 #endif
@@ -564,9 +564,9 @@ namespace Minotaur.Codecs
             }
             if (value < 1048576) // 20 bits (3 bytes >> 4)
             {
-                *(pTo++) = (byte)((f << 7) | (sign << 6) | (2 << 4) | ((value & 0xf0000) >> 16));
-                *(pTo++) = (byte)((value & 0xff00) >> 8);
-                *(pTo++) = (byte)(value & 0xff);
+                *pTo++ = (byte)((f << 7) | (sign << 6) | (2 << 4) | ((value & 0xf0000) >> 16));
+                *pTo++ = (byte)((value & 0xff00) >> 8);
+                *pTo++ = (byte)(value & 0xff);
 #if Debug
                 count32[3]++;
 #endif
@@ -574,11 +574,11 @@ namespace Minotaur.Codecs
             }
 
             // 32 bits full 4 bytes size
-            *(pTo++) = (byte)((f << 7) | (sign << 6) | (3 << 4));
-            *(pTo++) = (byte)((value & 0xff000000) >> 24);
-            *(pTo++) = (byte)((value & 0xff0000) >> 16);
-            *(pTo++) = (byte)((value & 0xff00) >> 8);
-            *(pTo++) = (byte)(value & 0xff);
+            *pTo++ = (byte)((f << 7) | (sign << 6) | (3 << 4));
+            *pTo++ = (byte)((value & 0xff000000) >> 24);
+            *pTo++ = (byte)((value & 0xff0000) >> 16);
+            *pTo++ = (byte)((value & 0xff00) >> 8);
+            *pTo++ = (byte)(value & 0xff);
 #if Debug
             count32[4]++;
 #endif
@@ -601,7 +601,7 @@ namespace Minotaur.Codecs
                 return sign * (((*pFrom++ & 0xF) << 16) | *pFrom++ << 8 | *pFrom++);
 
             pFrom++;
-            var value = (*pFrom++ << 24 | *pFrom++ << 16 | *pFrom++ << 8 | *pFrom++);
+            var value = *pFrom++ << 24 | *pFrom++ << 16 | *pFrom++ << 8 | *pFrom++;
             return value == int.MinValue ? int.MinValue : sign * value;
         }
 

@@ -1,13 +1,12 @@
 ﻿using System;
-using System.IO;
 using System.Runtime.InteropServices;
 using Minotaur.Codecs;
-using Minotaur.IO;
 using Minotaur.Native;
+using Minotaur.Streams;
 using NUnit.Framework;
-using MemoryStream = Minotaur.IO.MemoryStream;
+using MemoryStream = Minotaur.Streams.MemoryStream;
 
-namespace Minotaur.Tests.IO
+namespace Minotaur.Tests.Streams
 {
     [TestFixture]
     public unsafe class ColumnStreamTests

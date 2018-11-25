@@ -4,12 +4,11 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Diagnosers;
 using Minotaur.Codecs;
 using Minotaur.Core;
-using Minotaur.IO;
+using Minotaur.Streams;
 using Minotaur.Tests;
-using MemoryStream = Minotaur.IO.MemoryStream;
+using MemoryStream = Minotaur.Streams.MemoryStream;
 
 namespace Minotaur.Benchmarks
 {
@@ -139,8 +138,7 @@ namespace Minotaur.Benchmarks
             _streams.Add(stream);
             return stream;
         }
-
-
+        
         private ColumnStreamNew<MemoryStream, TCodec> CreateCs<TCodec>(TCodec codec, byte[] data)
             where TCodec : ICodec
         {

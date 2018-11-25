@@ -5,7 +5,8 @@ using System.Linq;
 using System.Xml.Serialization;
 using Minotaur.Core;
 using Minotaur.Core.Platform;
-using Minotaur.IO;
+using Minotaur.Recorders;
+using Minotaur.Streams;
 
 namespace Minotaur.Providers
 {
@@ -19,12 +20,11 @@ namespace Minotaur.Providers
         private readonly string _metaFolderPath;
         private readonly Dictionary<string, BTree<DateTime, FileMetaData>> _btrees = new Dictionary<string, BTree<DateTime, FileMetaData>>();
         private readonly IDataCollector _collector;
-        private readonly IStreamFactory<TPlatform> _factory;
+        private readonly Streams.IStreamFactory<TPlatform> _factory;
 
         public StreamProvider(
             string rootPath,
-            IDataCollector collector,
-            IStreamFactory<TPlatform> factory)
+            IDataCollector collector, Streams.IStreamFactory<TPlatform> factory)
         {
             _metaFolderPath = Path.Combine(rootPath ?? ".\\", "Meta");
             _collector = collector;

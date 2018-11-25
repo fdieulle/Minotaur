@@ -2,10 +2,10 @@
 using System.Runtime.InteropServices;
 using Minotaur.Codecs;
 using Minotaur.Cursors;
-using Minotaur.IO;
 using Minotaur.Native;
+using Minotaur.Streams;
 using NUnit.Framework;
-using MemoryStream = Minotaur.IO.MemoryStream;
+using MemoryStream = Minotaur.Streams.MemoryStream;
 
 namespace Minotaur.Tests.Cursors
 {

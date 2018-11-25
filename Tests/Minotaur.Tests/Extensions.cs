@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Minotaur.Cursors;
-using Minotaur.IO;
 using Minotaur.Native;
-using NUnit.Framework;
+using Minotaur.Streams;
 
 namespace Minotaur.Tests
 {

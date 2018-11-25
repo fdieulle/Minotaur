@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using Minotaur.Providers;
 
-namespace Minotaur.Providers
+namespace Minotaur.Recorders
 {
     public interface IDataCollector
     {

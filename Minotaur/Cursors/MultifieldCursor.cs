@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Minotaur.IO;
+using Minotaur.Streams;
 
 namespace Minotaur.Cursors
 {

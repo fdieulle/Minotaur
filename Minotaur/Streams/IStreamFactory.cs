@@ -1,7 +1,7 @@
 ﻿using Minotaur.Core.Platform;
-using Minotaur.IO;
+using Minotaur.Providers;
 
-namespace Minotaur.Providers
+namespace Minotaur.Streams
 {
     public interface IStreamFactory<TPlatform> 
         where TPlatform : IPlatform

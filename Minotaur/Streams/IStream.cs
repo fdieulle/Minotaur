@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace Minotaur.IO
+namespace Minotaur.Streams
 {
     /// <summary>
     /// This interface describe a generic stream.

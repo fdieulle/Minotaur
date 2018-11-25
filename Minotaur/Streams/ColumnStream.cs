@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using Minotaur.Codecs;
 using Minotaur.Core;
 
-namespace Minotaur.IO
+namespace Minotaur.Streams
 {
     /// <summary>
 	/// Column stream is responsible to write and read columnar data.

@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Minotaur.Codecs;
 using Minotaur.Cursors;
-using Minotaur.IO;
 using Minotaur.Native;
+using Minotaur.Streams;
 using NUnit.Framework;
 
 namespace Minotaur.Tests.Cursors

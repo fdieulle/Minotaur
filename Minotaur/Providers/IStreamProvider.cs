@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Minotaur.IO;
+using Minotaur.Streams;
 
 namespace Minotaur.Providers
 {

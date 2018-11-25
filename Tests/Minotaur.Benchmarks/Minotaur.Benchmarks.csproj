@@ -30,7 +30,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
-	<DebugSymbols>true</DebugSymbols>
+    <DebugSymbols>true</DebugSymbols>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
@@ -211,8 +211,10 @@
       <Link>Factory.cs</Link>
     </Compile>
     <Compile Include="ColumnStreamBenchmark.cs" />
+    <Compile Include="MinMaxBranchless.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="XorSwapBenchmark.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

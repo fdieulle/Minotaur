@@ -1,6 +1,6 @@
 ﻿using System;
-using Minotaur.IO;
 using Minotaur.Native;
+using Minotaur.Streams;
 using NUnit.Framework;
 
 namespace Minotaur.Tests

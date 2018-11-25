@@ -1,7 +1,8 @@
 ﻿using System.IO;
 using NUnit.Framework;
+using MemoryStream = Minotaur.Streams.MemoryStream;
 
-namespace Minotaur.Tests.IO
+namespace Minotaur.Tests.Streams
 {
     [TestFixture]
     public class StreamTests
@@ -11,7 +12,7 @@ namespace Minotaur.Tests.IO
         {
             var data1 = Factory.CreateRandomBytes(1024 * 3 + 500);
 
-            var memory = new Minotaur.IO.MemoryStream(1024);
+            var memory = new MemoryStream(1024);
             fixed (byte* p = data1)
                 memory.Write(p, data1.Length);
 

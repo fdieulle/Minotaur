@@ -1,9 +1,8 @@
 ﻿using System;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Xml.Serialization;
-using Minotaur.IO;
+using Minotaur.Streams;
 
 namespace Minotaur
 {

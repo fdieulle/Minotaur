@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Minotaur.Core.Platform;
-using Minotaur.IO;
 using Minotaur.Providers;
+using Minotaur.Recorders;
+using Minotaur.Streams;
 using NSubstitute;
 using NUnit.Framework;
 

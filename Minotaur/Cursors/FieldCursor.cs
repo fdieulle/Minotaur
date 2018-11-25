@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using DotNetCross.Memory;
-using Minotaur.IO;
+using Minotaur.Streams;
 
 namespace Minotaur.Cursors
 {

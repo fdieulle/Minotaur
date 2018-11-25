@@ -6,11 +6,6 @@ namespace Minotaur
 {
     public static class Bits
     {
-        public const int KILO_BYTE = 1024;
-        public const int MEGA_BYTE = KILO_BYTE * KILO_BYTE;
-        public const int GIGA_BYTE = KILO_BYTE * MEGA_BYTE;
-        public const long TERA_BYTE = KILO_BYTE * (long)GIGA_BYTE;
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void XorSwap(ref byte* x, ref byte* y)
         {

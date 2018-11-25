@@ -1,11 +1,17 @@
 ﻿using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Threading;
+using Microsoft.Win32.SafeHandles;
 
 namespace Minotaur.Core.Platform
 {
     public static unsafe class Win32Platform
     {
+        private const string KERNEL32 = "kernel32.dll";
+        private const string MSVCRT = "msvcrt.dll";
+
         /// <summary>
         /// The processor architecture of the installed operating system. This member can be one of <see cref="PROCESSOR_ARCHITECTURE"/> values.
         /// </summary>
@@ -44,10 +50,10 @@ namespace Minotaur.Core.Platform
             AllocationGranularity = systemInfo.allocationGranularity;
         }
 
-        [DllImport("kernel32.dll")]
+        [DllImport(KERNEL32)]
         public static extern void GetSystemInfo(out SYSTEM_INFO lpSystemInfo);
 
-        [DllImport("msvcrt.dll", EntryPoint = "memmove", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
+        [DllImport(MSVCRT, EntryPoint = "memmove", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
         [SecurityCritical]
         public static extern int Move(byte* dest, byte* src, long count);
 
@@ -87,5 +93,42 @@ namespace Minotaur.Core.Platform
             public ushort processorLevel;
             public ushort processorRevision;
         }
+
+        #region File
+
+        [DllImport(KERNEL32, SetLastError = true)]
+        public static extern SafeFileHandle CreateFile(
+            string filePath,
+            FileAccess desiredAccess,
+            FileShare shareMode,
+            IntPtr securityAttributes,
+            FileMode creationDisposition,
+            FileOptions flagsAndAttributes,
+            IntPtr templateFile);
+
+        [DllImport(KERNEL32, SetLastError = true)]
+        public static extern ulong SetFilePointer(
+            SafeFileHandle handle, ulong lo, ulong* hi, SeekOrigin origin);
+
+        [DllImport(KERNEL32, SetLastError = true)]
+        public static extern bool WriteFile(
+            SafeHandle hFile,
+            byte* lpBuffer,
+            int nNumberOfBytesToWrite,
+            int* lpNumberOfBytesWritten,
+            NativeOverlapped* lpOverlapped);
+
+        [DllImport(KERNEL32, SetLastError = true)]
+        public static extern bool ReadFile(
+            SafeHandle hFile,
+            byte* lpBuffer,
+            int nNumberOfBytesToRead,
+            int* lpNumberOfBytesRead,
+            NativeOverlapped* lpOverlapped);
+
+        [DllImport(KERNEL32, SetLastError = true)]
+        public static extern bool SetEndOfFile(SafeFileHandle handle);
+
+        #endregion
     }
 }

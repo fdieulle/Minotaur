@@ -2,6 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using DotNetCross.Memory;
+using Minotaur.Core;
 using Minotaur.Core.Platform;
 
 namespace Minotaur.Codecs
@@ -22,7 +23,7 @@ namespace Minotaur.Codecs
         private const int MAXD_LOG = 16;
         private const int MAX_DISTANCE = ((1 << MAXD_LOG) - 1);
 
-        private const int LZ4_64_KLIMIT = (64 * Bits.KILO_BYTE) + (MFLIMIT - 1);
+        private const int LZ4_64_KLIMIT = (64 * Mem.KB) + (MFLIMIT - 1);
         private const int LZ4_SKIP_TRIGGER = 6;  // Increase this value ==> compression run slower on incompressible data
 
         private const byte ML_BITS = 4;
@@ -222,7 +223,7 @@ namespace Minotaur.Codecs
             byte* olimit = op + maxOutputSize;
 
             // Init conditions
-            if (typeof(TLimited) == typeof(LimitedDestSize)) olimit -= LASTLITERALS; /* Hack for support LZ4 format restriction */
+            if (typeof(TLimited) == typeof(LimitedDestSize) && maxOutputSize < 1) return 0; /* Impossible to store anything */
             if (inputSize > LZ4_MAX_INPUT_SIZE) return 0;   // Unsupported input size, too large (or negative)
 
             byte* @base;
@@ -248,7 +249,6 @@ namespace Minotaur.Codecs
             if ((typeof(TTableType) == typeof(ByU16)) && (inputSize >= LZ4_64_KLIMIT)) // Size too large (not within 64K limit)
                 return 0;
 
-            if (typeof(TLimited) == typeof(LimitedOutput)) olimit -= LASTLITERALS;
             if (inputSize < LZ4_MIN_LENGTH) // Input too small, no compression (all literals)
                 goto _last_literals;
 
@@ -651,7 +651,7 @@ namespace Minotaur.Codecs
             }
             else
             {
-                var length = LZ4_decompress_generic<EndOnOutputSize, Full, WithPrefix64K>(ref input, ref output, inputLength, outputLength, 0, output - (64 * Bits.KILO_BYTE), null, 64 * Bits.KILO_BYTE);
+                var length = LZ4_decompress_generic<EndOnOutputSize, Full, WithPrefix64K>(ref input, ref output, inputLength, outputLength, 0, output - (64 * Mem.KB), null, 64 * Mem.KB);
                 if (length < 0)
                     ThrowException(new ArgumentException("LZ4 block is corrupted, or invalid length has been given."));
 
@@ -662,7 +662,7 @@ namespace Minotaur.Codecs
         public static int Decode64(ref byte* input, int inputLength, ref byte* output, int remainOutputLength, int targetOutput)
         {
             return LZ4_decompress_generic<EndOnInputSize, Partial, NoDict>(ref input, ref output, inputLength, remainOutputLength,
-                targetOutput, output - (64 * Bits.KILO_BYTE), null, 64 * Bits.KILO_BYTE);
+                targetOutput, output - (64 * Mem.KB), null, 64 * Mem.KB);
         }
 
         private static readonly int[] dec32Table = new int[] { 4, 1, 2, 1, 4, 4, 4, 4 };
@@ -687,7 +687,7 @@ namespace Minotaur.Codecs
 
             byte* dictEnd = dictStart + dictSize;
 
-            bool checkOffset = ((typeof(TEndCondition) == typeof(EndOnInputSize)) && (dictSize < 64 * Bits.KILO_BYTE));
+            bool checkOffset = ((typeof(TEndCondition) == typeof(EndOnInputSize)) && (dictSize < 64 * Mem.KB));
 
             // Special Cases
             if ((typeof(TEarlyEnd) == typeof(Partial)) && (oexit > oend - MFLIMIT)) oexit = oend - MFLIMIT;                          // targetOutputSize too high => decode everything

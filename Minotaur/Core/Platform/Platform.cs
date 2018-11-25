@@ -21,4 +21,9 @@ namespace Minotaur.Core.Platform
                 : Win32Platform.Move(dest, src, count);
         }
     }
+
+
+    public interface IPlatform { }
+    public struct Win32 : IPlatform { }
+    public struct Posix : IPlatform { }
 }

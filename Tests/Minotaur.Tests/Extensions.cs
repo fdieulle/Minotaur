@@ -197,5 +197,14 @@ namespace Minotaur.Tests
             for (var i = 0; i < length; i++)
                 *(p + i) = value;
         }
+
+        public static IEnumerable<DateTime> SplitDaysTo(this DateTime start, DateTime end)
+        {
+            while (start.Date <= end.Date)
+            {
+                yield return start.Date;
+                start = start.AddDays(1);
+            }
+        }
     }
 }

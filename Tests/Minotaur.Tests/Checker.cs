@@ -48,8 +48,8 @@ namespace Minotaur.Tests
             {
                 for (var i = 0; i < x.Length; i++)
                 {
-                    Assert.AreEqual((px + i)->ticks, (py + i)->ticks, "Ticks");
-                    Assert.AreEqual((px + i)->value, (py + i)->value, "Value");
+                    Assert.AreEqual((px + i)->ticks, (py + i)->ticks, $"Ticks at {i}, count: {x.Length}");
+                    Assert.AreEqual((px + i)->value, (py + i)->value, $"Value at {i}, count: {x.Length}");
                 }
             }
         }

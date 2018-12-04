@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using Minotaur.Cursors;
 using Minotaur.Native;
+using Minotaur.Recorders;
 using Minotaur.Streams;
 
 namespace Minotaur.Tests
@@ -164,6 +166,7 @@ namespace Minotaur.Tests
             "HH:mm",
         };
         
+        [DebuggerStepThrough]
         public static DateTime ToDateTime(this string value)
         {
             if (string.IsNullOrEmpty(value)) return DateTime.MinValue;
@@ -205,5 +208,9 @@ namespace Minotaur.Tests
                 start = start.AddDays(1);
             }
         }
+
+        [DebuggerStepThrough]
+        public static IRowRecorder<ITimeSeriesRecorder> AddRow(this ITimeSeriesRecorder recorder, string timestamp)
+            => recorder.AddRow(timestamp.ToDateTime());
     }
 }

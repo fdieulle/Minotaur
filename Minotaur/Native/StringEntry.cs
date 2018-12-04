@@ -6,12 +6,11 @@ namespace Minotaur.Native
     [StructLayout(LayoutKind.Explicit, Size = SIZE)]
     public unsafe struct StringEntry : IEquatable<StringEntry>
     {
+        public const int SIZE = 256;
         public const int SIZE_OF_TICKS = sizeof(long);
         public const int SIZE_OF_VALUE_LENGTH = 1;
-        public const int SIZE_OF_VALUE = 128;
-        public const int SIZE_OF_TICKS_WITH_LENGTH = SIZE_OF_TICKS + SIZE_OF_VALUE_LENGTH;
-        public const int SIZE_OF_VALUE_WITH_LENGTH = SIZE_OF_VALUE + SIZE_OF_VALUE_LENGTH;
-        public const int SIZE = SIZE_OF_VALUE_WITH_LENGTH + SIZE_OF_TICKS;
+        public const int SIZE_OF_VALUE = SIZE - SIZE_OF_TICKS - SIZE_OF_VALUE_LENGTH - 1;
+        
 
         [FieldOffset(0)]
         public long ticks;

@@ -8,6 +8,8 @@ namespace Minotaur.Providers
 
         public string Column { get; set; }
 
+        public FieldType Type { get; set; }
+
         public DateTime Start { get; set; }
 
         public DateTime End { get; set; }

@@ -1,5 +1,6 @@
 ﻿using System;
 using Minotaur.Native;
+using Minotaur.Providers;
 using Minotaur.Streams;
 using NUnit.Framework;
 
@@ -52,6 +53,15 @@ namespace Minotaur.Tests
                     Assert.AreEqual((px + i)->value, (py + i)->value, $"Value at {i}, count: {x.Length}");
                 }
             }
+        }
+
+        public static void Check(this FileMetaData meta, string symbol, string column, FieldType type, string start, string end)
+        {
+            Assert.AreEqual(symbol, meta.Symbol, "Symbol");
+            Assert.AreEqual(column, meta.Column, "Column");
+            Assert.AreEqual(type, meta.Type, "Type");
+            Assert.AreEqual(start.ToDateTime(), meta.Start, "Start");
+            Assert.AreEqual(end.ToDateTime(), meta.End, "End");
         }
     }
 }

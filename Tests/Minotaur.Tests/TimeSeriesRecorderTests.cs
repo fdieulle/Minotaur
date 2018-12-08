@@ -42,7 +42,7 @@ namespace Minotaur.Tests
             }
 
             var mockFilePahtProvider = Substitute.For<IFilePathProvider>();
-            mockFilePahtProvider.GetPath(Arg.Is<string>(p => p == symbol), Arg.Any<string>(), Arg.Any<DateTime>())
+            mockFilePahtProvider.GetFilePath(Arg.Is<string>(p => p == symbol), Arg.Any<string>(), Arg.Any<DateTime>())
                 .Returns(p => $"{p.ArgAt<string>(0)}_{p.ArgAt<string>(1)}_{p.ArgAt<DateTime>(2):yyyy-MM-dd_HH:mm:ss.fff}.min");
 
             var recorder = new TimeSeriesRecorder<Win32>(symbol, mockStreamFactory, mockFilePahtProvider);
@@ -64,7 +64,7 @@ namespace Minotaur.Tests
                     p.Symbol == symbol &&
                     p.Start == now.ToDateTime() && 
                     pair.Key.StartsWith(p.Type.ToString()) &&
-                    p.FilePath == mockFilePahtProvider.GetPath(symbol, pair.Key, p.Start)));
+                    p.FilePath == mockFilePahtProvider.GetFilePath(symbol, pair.Key, p.Start)));
                 pair.Value.CheckCallsThenClear();
             }
             mockStreamFactory.ClearReceivedCalls();
@@ -163,7 +163,7 @@ namespace Minotaur.Tests
                 .Returns(mockStream1);
 
             var mockFilePahtProvider = Substitute.For<IFilePathProvider>();
-            mockFilePahtProvider.GetPath(Arg.Is<string>(p => p == symbol), Arg.Any<string>(), Arg.Any<DateTime>())
+            mockFilePahtProvider.GetFilePath(Arg.Is<string>(p => p == symbol), Arg.Any<string>(), Arg.Any<DateTime>())
                 .Returns(p => $"{p.ArgAt<string>(0)}_{p.ArgAt<string>(1)}_{p.ArgAt<DateTime>(2):yyyy-MM-dd_HH:mm:ss.fff}.min");
 
             var recorder = new TimeSeriesRecorder<Win32>(symbol, mockStreamFactory, mockFilePahtProvider);
@@ -179,7 +179,7 @@ namespace Minotaur.Tests
                 p.Symbol == symbol &&
                 p.Start == now.ToDateTime() &&
                 p.Type == FieldType.Int32 &&
-                p.FilePath == mockFilePahtProvider.GetPath(symbol, column, p.Start)));
+                p.FilePath == mockFilePahtProvider.GetFilePath(symbol, column, p.Start)));
             mockStreamFactory.ClearReceivedCalls();
             mockStream1.CheckCallsThenClear();
 
@@ -199,7 +199,7 @@ namespace Minotaur.Tests
                 p.Symbol == symbol &&
                 p.Start == now.ToDateTime() &&
                 p.Type == FieldType.Int32 &&
-                p.FilePath == mockFilePahtProvider.GetPath(symbol, column, p.Start)));
+                p.FilePath == mockFilePahtProvider.GetFilePath(symbol, column, p.Start)));
             mockStreamFactory.ClearReceivedCalls();
             mockStream1.CheckCallsThenClear(1);
             mockStream2.CheckCallsThenClear();

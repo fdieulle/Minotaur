@@ -11,9 +11,9 @@ namespace Minotaur.Core
     {
         private static readonly string lockFileContent = $"{Environment.MachineName}:{Process.GetCurrentProcess().Id}";
 
-        public static void CreateFolderIfNotExist(this string path)
+        public static string CreateFolderIfNotExist(this string path)
         {
-            if (string.IsNullOrEmpty(path)) return;
+            if (string.IsNullOrEmpty(path)) return path;
 
             try
             {
@@ -24,6 +24,8 @@ namespace Minotaur.Core
             {
                 // Todo: log error here
             }
+
+            return path;
         }
 
         public static bool FileSpinWait(this string filePath, int timeout = -1)

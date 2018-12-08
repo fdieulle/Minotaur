@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using Minotaur.Core.Platform;
 using Minotaur.Providers;
-using Minotaur.Recorders;
 using Minotaur.Streams;
 using NSubstitute;
 using NUnit.Framework;
@@ -20,7 +19,9 @@ namespace Minotaur.Tests
             var rootFolder = Guid.NewGuid().ToString("N");
 
             try
-            {var dataProvider = Substitute.For<IDataProvider>();
+            {
+                var filePathProvider = new FilePathProvider(rootFolder);
+                var dataProvider = Substitute.For<IDataProvider>();
                 dataProvider.Fetch(Arg.Any<string>(), Arg.Any<DateTime>(), Arg.Any<DateTime>())
                     .ReturnsForAnyArgs(p => p.ArgAt<DateTime>(1).SplitDaysTo(p.ArgAt<DateTime>(2))
                         .SelectMany(d => Fmds(p.ArgAt<string>(0), new[] {"Column_1", "Column_2", "Column_3"}, d))
@@ -30,7 +31,7 @@ namespace Minotaur.Tests
                 var mockStream = Substitute.For<IStream>();
                 streamFactory.Create(Arg.Any<FileMetaData>()).Returns(mockStream);
 
-                var provider = new StreamProvider<Win32>(rootFolder, dataProvider, streamFactory);
+                var provider = new StreamProvider<Win32>(filePathProvider, dataProvider, streamFactory);
 
                 var symbol = "Symbol";
 

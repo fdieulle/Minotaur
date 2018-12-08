@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
 using Minotaur.Core;
@@ -17,18 +16,18 @@ namespace Minotaur.Providers
         // Todo: FilePath creation is delayed to DataCollector
         // Todo: Implements a thread safety version
 
-        private readonly string _metaFolderPath;
-        private readonly Dictionary<string, BTree<DateTime, FileMetaData>> _btrees = new Dictionary<string, BTree<DateTime, FileMetaData>>();
-        private readonly IDataProvider _provider;
+        private readonly Dictionary<string, BTree<DateTime, FileMetaData>> _bTrees = new Dictionary<string, BTree<DateTime, FileMetaData>>();
+        private readonly IFilePathProvider _filePathProvider;
+        private readonly IDataProvider _dataProvider;
         private readonly IStreamFactory<TPlatform> _factory;
 
         public StreamProvider(
-            string rootPath,
-            IDataProvider provider, 
+            IFilePathProvider filePathProvider,
+            IDataProvider dataProvider, 
             IStreamFactory<TPlatform> factory)
         {
-            _metaFolderPath = Path.Combine(rootPath ?? ".\\", "Meta");
-            _provider = provider;
+            _filePathProvider = filePathProvider;
+            _dataProvider = dataProvider;
             _factory = factory;
         }
 
@@ -46,7 +45,7 @@ namespace Minotaur.Providers
                     foreach (var stream in CollectAndFetch(symbol, column, start, entry.Key.AddTicks(-1)))
                         yield return stream;
 
-                    Persist(_metaFolderPath, GetKey(symbol, column), bTree);
+                    Persist(_filePathProvider.GetMetaFilePath(symbol, column), bTree);
                 }
 
                 yield return _factory.Create(entry.Value);
@@ -58,14 +57,14 @@ namespace Minotaur.Providers
                 foreach (var stream in CollectAndFetch(symbol, column, start, end))
                     yield return stream;
 
-                Persist(_metaFolderPath, GetKey(symbol, column), bTree);
+                Persist(_filePathProvider.GetMetaFilePath(symbol, column), bTree);
             }
         }
 
         private IEnumerable<IStream> CollectAndFetch(string symbol, string column, DateTime start, DateTime end)
         {
             // Load from start to entry.Key
-            foreach (var meta in _provider.Fetch(symbol, start, end))
+            foreach (var meta in _dataProvider.Fetch(symbol, start, end))
             {
                 // Todo: Update btree entries by locking and save metadata
                 AddMeta(meta);
@@ -79,10 +78,10 @@ namespace Minotaur.Providers
         private BTree<DateTime, FileMetaData> GetBTree(string symbol, string column)
         {
             var key = GetKey(symbol, column);
-            if (!_btrees.TryGetValue(key, out var bTree))
+            if (!_bTrees.TryGetValue(key, out var bTree))
             {
-                bTree = LoadBTree(_metaFolderPath, key) ?? CreateBTree();
-                _btrees.Add(key, bTree);
+                bTree = LoadBTree(_filePathProvider.GetMetaFilePath(symbol, column), key) ?? CreateBTree();
+                _bTrees.Add(key, bTree);
             }
             return bTree;
         }
@@ -100,12 +99,9 @@ namespace Minotaur.Providers
         // ReSharper disable once StaticMemberInGenericType
         private static readonly XmlSerializer serializer = new XmlSerializer(typeof(List<FileMetaData>));
 
-        private static BTree<DateTime, FileMetaData> LoadBTree(string folder, string key)
+        private static BTree<DateTime, FileMetaData> LoadBTree(string metaFilePath, string key)
         {
-            folder.CreateFolderIfNotExist();
-
             // SpinLock file meta for multi processes concurrency
-            var metaFilePath = Path.Combine(folder, $"{key}.meta");
             using (metaFilePath.FileLock())
             {
                 var meta = serializer.Deserialize<List<FileMetaData>>(metaFilePath);
@@ -118,11 +114,8 @@ namespace Minotaur.Providers
             }   
         }
 
-        private static void Persist(string folder, string key, BTree<DateTime, FileMetaData> bTree)
+        private static void Persist(string metaFilePath, BTree<DateTime, FileMetaData> bTree)
         {
-            folder.CreateFolderIfNotExist();
-
-            var metaFilePath = Path.Combine(folder, $"{key}.meta");
             using (metaFilePath.FileLock())
             {
                 // Merge meta and drop collisions

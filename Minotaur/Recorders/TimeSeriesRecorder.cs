@@ -83,7 +83,7 @@ namespace Minotaur.Recorders
                     Column = column,
                     Type = Natives.GetType<T>(),
                     Start = _currentTimestamp,
-                    FilePath = _filePathProvider.GetPath(_symbol, column, _currentTimestamp)
+                    FilePath = _filePathProvider.GetFilePath(_symbol, column, _currentTimestamp)
                 };
 
                 // be sure that there is no hole between timelines

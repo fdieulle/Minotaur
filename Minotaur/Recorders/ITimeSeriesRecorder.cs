@@ -4,7 +4,7 @@ using Minotaur.Providers;
 
 namespace Minotaur.Recorders
 {
-    public interface ITimeSeriesRecorder
+    public interface ITimeSeriesRecorder : IDisposable
     {
         IEnumerable<FileMetaData> MetaData { get; }
 

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Xml.Serialization;
 using Minotaur.Core;
 using Minotaur.Core.Platform;
-using Minotaur.Recorders;
 using Minotaur.Streams;
 
 namespace Minotaur.Providers
@@ -80,7 +79,7 @@ namespace Minotaur.Providers
             var key = GetKey(symbol, column);
             if (!_bTrees.TryGetValue(key, out var bTree))
             {
-                bTree = LoadBTree(_filePathProvider.GetMetaFilePath(symbol, column), key) ?? CreateBTree();
+                bTree = LoadBTree(_filePathProvider.GetMetaFilePath(symbol, column)) ?? CreateBTree();
                 _bTrees.Add(key, bTree);
             }
             return bTree;
@@ -99,7 +98,7 @@ namespace Minotaur.Providers
         // ReSharper disable once StaticMemberInGenericType
         private static readonly XmlSerializer serializer = new XmlSerializer(typeof(List<FileMetaData>));
 
-        private static BTree<DateTime, FileMetaData> LoadBTree(string metaFilePath, string key)
+        private static BTree<DateTime, FileMetaData> LoadBTree(string metaFilePath)
         {
             // SpinLock file meta for multi processes concurrency
             using (metaFilePath.FileLock())

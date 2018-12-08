@@ -35,6 +35,7 @@ namespace Minotaur.Recorders
 
             var buffer = new byte[Natives.MAX_ENTRY_SIZE];
             _bufferHandle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+            // ReSharper disable once ImpureMethodCallOnReadonlyValueField
             _buffer = (byte*)_bufferHandle.AddrOfPinnedObject();
         }
 
@@ -105,7 +106,7 @@ namespace Minotaur.Recorders
                 _columns.Remove(column);
                 tuple.Stream.Flush();
 
-                Record<T>(column, value); // Todo: Maybe check a max retry here to avoid overflow exception
+                Record(column, value); // Todo: Maybe check a max retry here to avoid overflow exception
                 return this;
             }
 
@@ -124,6 +125,7 @@ namespace Minotaur.Recorders
             Clear();
            
             if (_bufferHandle.IsAllocated)
+                // ReSharper disable once ImpureMethodCallOnReadonlyValueField
                 _bufferHandle.Free();
         }
 

@@ -20,9 +20,8 @@ namespace Minotaur.Tests
             var rootFolder = Guid.NewGuid().ToString("N");
 
             try
-            {
-                var dataCollector = Substitute.For<IDataCollector>();
-                dataCollector.Collect(Arg.Any<string>(), Arg.Any<DateTime>(), Arg.Any<DateTime>())
+            {var dataProvider = Substitute.For<IDataProvider>();
+                dataProvider.Fetch(Arg.Any<string>(), Arg.Any<DateTime>(), Arg.Any<DateTime>())
                     .ReturnsForAnyArgs(p => p.ArgAt<DateTime>(1).SplitDaysTo(p.ArgAt<DateTime>(2))
                         .SelectMany(d => Fmds(p.ArgAt<string>(0), new[] {"Column_1", "Column_2", "Column_3"}, d))
                         .Select(m => CreateFile(rootFolder, m)));
@@ -31,7 +30,7 @@ namespace Minotaur.Tests
                 var mockStream = Substitute.For<IStream>();
                 streamFactory.Create(Arg.Any<FileMetaData>()).Returns(mockStream);
 
-                var provider = new StreamProvider<Win32>(rootFolder, dataCollector, streamFactory);
+                var provider = new StreamProvider<Win32>(rootFolder, dataProvider, streamFactory);
 
                 var symbol = "Symbol";
 
@@ -72,11 +71,11 @@ namespace Minotaur.Tests
                     }
 
                     Assert.AreEqual(dates.Length, idx);
-                    dataCollector.Received(1).Collect(
+                    dataProvider.Received(1).Fetch(
                         Arg.Is<string>(p => p == symbol),
                         Arg.Is<DateTime>(p => p == start),
                         Arg.Is<DateTime>(p => p == end));
-                    dataCollector.ClearReceivedCalls();
+                    dataProvider.ClearReceivedCalls();
                 }
 
                 void CheckDataReadOnly(string startStr, string endStr)
@@ -98,7 +97,7 @@ namespace Minotaur.Tests
                     }
 
                     Assert.AreEqual(dates.Length, idx);
-                    dataCollector.DidNotReceive().Collect(Arg.Any<string>(), Arg.Any<DateTime>(), Arg.Any<DateTime>());
+                    dataProvider.DidNotReceive().Fetch(Arg.Any<string>(), Arg.Any<DateTime>(), Arg.Any<DateTime>());
                 }
 
                 void CheckMixed(string startStr, string endStr, string collectStartStr, string collectEndStr)
@@ -120,11 +119,11 @@ namespace Minotaur.Tests
                     }
 
                     Assert.AreEqual(dates.Length, idx);
-                    dataCollector.Received(1).Collect(
+                    dataProvider.Received(1).Fetch(
                         Arg.Is<string>(p => p == symbol),
                         Arg.Is<DateTime>(p => p == collectStartStr.ToDateTime()),
                         Arg.Is<DateTime>(p => p == collectEndStr.ToDateTime().AddTicks(-1)));
-                    dataCollector.ClearReceivedCalls();
+                    dataProvider.ClearReceivedCalls();
                 }
             }
             finally

@@ -19,15 +19,16 @@ namespace Minotaur.Providers
 
         private readonly string _metaFolderPath;
         private readonly Dictionary<string, BTree<DateTime, FileMetaData>> _btrees = new Dictionary<string, BTree<DateTime, FileMetaData>>();
-        private readonly IDataCollector _collector;
-        private readonly Streams.IStreamFactory<TPlatform> _factory;
+        private readonly IDataProvider _provider;
+        private readonly IStreamFactory<TPlatform> _factory;
 
         public StreamProvider(
             string rootPath,
-            IDataCollector collector, Streams.IStreamFactory<TPlatform> factory)
+            IDataProvider provider, 
+            IStreamFactory<TPlatform> factory)
         {
             _metaFolderPath = Path.Combine(rootPath ?? ".\\", "Meta");
-            _collector = collector;
+            _provider = provider;
             _factory = factory;
         }
 
@@ -64,7 +65,7 @@ namespace Minotaur.Providers
         private IEnumerable<IStream> CollectAndFetch(string symbol, string column, DateTime start, DateTime end)
         {
             // Load from start to entry.Key
-            foreach (var meta in _collector.Collect(symbol, start, end))
+            foreach (var meta in _provider.Fetch(symbol, start, end))
             {
                 // Todo: Update btree entries by locking and save metadata
                 AddMeta(meta);

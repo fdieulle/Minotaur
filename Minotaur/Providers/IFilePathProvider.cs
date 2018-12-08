@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Minotaur.Recorders
+namespace Minotaur.Providers
 {
     public interface IFilePathProvider
     {

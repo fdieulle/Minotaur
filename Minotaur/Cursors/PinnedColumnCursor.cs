@@ -7,15 +7,15 @@ namespace Minotaur.Cursors
     /// <summary>
     /// Tis class is more an Helper than a concrete implementation
     /// </summary>
-    public unsafe class PinnedFieldCursor<T, TStream> : IFieldCursor<T>
+    public unsafe class PinnedColumnCursor<T, TStream> : IColumnCursor<T>
         where T : struct
         where TStream : IStream
 
     {
         private GCHandle _handle;
-        private readonly IFieldCursor<T> _underlying;
+        private readonly IColumnCursor<T> _underlying;
 
-        public PinnedFieldCursor(Func<IntPtr, TStream, IFieldCursor<T>> factory, TStream stream)
+        public PinnedColumnCursor(Func<IntPtr, TStream, IColumnCursor<T>> factory, TStream stream)
         {
             var snapshot = new byte[sizeof(FieldSnapshot)];
             _handle = GCHandle.Alloc(snapshot, GCHandleType.Pinned);

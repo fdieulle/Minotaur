@@ -6,28 +6,28 @@ using Minotaur.Streams;
 
 namespace Minotaur.Cursors
 {
-    public abstract unsafe class FieldCursor<TStream> : IFieldCursor
+    public abstract unsafe class ColumnCursor<TStream> : IColumnCursor
         where TStream : IStream
     {
-        private readonly FieldSnapshot* _snaphot;
+        private readonly FieldSnapshot* _snapshot;
         private readonly int _sizeOfFieldEntry;
         private readonly TStream _stream;
 
         public long Ticks
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _snaphot->Current.Ticks;
+            get => _snapshot->Current.Ticks;
         }
 
         public long NextTicks
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _snaphot->Next.Ticks;
+            get => _snapshot->Next.Ticks;
         }
 
-        protected FieldCursor(FieldSnapshot* snaphot, TStream stream, int sizeOfField)
+        protected ColumnCursor(FieldSnapshot* snapshot, TStream stream, int sizeOfField)
         {
-            _snaphot = snaphot;
+            _snapshot = snapshot;
             _stream = stream;
             _sizeOfFieldEntry = sizeof(long) + sizeOfField;
 
@@ -40,26 +40,26 @@ namespace Minotaur.Cursors
         public T GetValue<T>() where T : struct
         {
             // Todo: Check perf
-            //return Unsafe.Read<T>((ulong*) _snaphot + sizeof(long));
-            return _snaphot->Current.GetValue<T>();
+            //return Unsafe.Read<T>((ulong*) _snapshot + sizeof(long));
+            return _snapshot->Current.GetValue<T>();
         }
 
         public void MoveNext(long ticks)
         {
-            while (ticks >= _snaphot->Next.Ticks)
+            while (ticks >= _snapshot->Next.Ticks)
             {
-                _snaphot->Current = _snaphot->Next;
-                if (_stream.Read((byte*) Unsafe.AsPointer(ref _snaphot->Next), _sizeOfFieldEntry) != _sizeOfFieldEntry)
-                    _snaphot->Next.Ticks = Time.MaxTicks;
+                _snapshot->Current = _snapshot->Next;
+                if (_stream.Read((byte*) Unsafe.AsPointer(ref _snapshot->Next), _sizeOfFieldEntry) != _sizeOfFieldEntry)
+                    _snapshot->Next.Ticks = Time.MaxTicks;
             }
         }
 
         public void Reset()
         {
-            _snaphot->Current.Ticks = Time.MinTicks;
-            _snaphot->Current.Value = GetDefaultValue();
-            _snaphot->Next.Ticks = Time.MinTicks;
-            _snaphot->Next.Value = GetDefaultValue();
+            _snapshot->Current.Ticks = Time.MinTicks;
+            _snapshot->Current.Value = GetDefaultValue();
+            _snapshot->Next.Ticks = Time.MinTicks;
+            _snapshot->Next.Value = GetDefaultValue();
             _stream.Reset();
         }
 
@@ -71,12 +71,12 @@ namespace Minotaur.Cursors
         }
     }
 
-    public unsafe class FieldCursor<T, TStream> : FieldCursor<TStream>, IFieldCursor<T>
+    public unsafe class ColumnCursor<T, TStream> : ColumnCursor<TStream>, IColumnCursor<T>
         where T : struct
         where TStream : IStream
     {
-        public FieldCursor(FieldSnapshot* snpashot, TStream stream)
-            : base(snpashot, stream, Marshal.SizeOf<T>()) { }
+        public ColumnCursor(FieldSnapshot* snapshot, TStream stream)
+            : base(snapshot, stream, Marshal.SizeOf<T>()) { }
 
         #region Implementation of IFieldProx<T>
 
@@ -94,7 +94,7 @@ namespace Minotaur.Cursors
 
         #endregion
 
-        #region Overrides of FieldCursor<TStream>
+        #region Overrides of ColumnCursor<TStream>
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected sealed override ulong GetDefaultValue()

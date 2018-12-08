@@ -103,15 +103,15 @@ namespace Minotaur.Tests.Cursors
 
                 #endregion
 
-                var fieldCursors = new Dictionary<int, FieldCursor<IStream>>
+                var fieldCursors = new Dictionary<string, ColumnCursor<IStream>>
                 {
-                    {1, new FieldCursor<double, IStream>((FieldSnapshot*) pSnapFields[1], streams[1])},
-                    {2, new FieldCursor<int, IStream>((FieldSnapshot*) pSnapFields[2], streams[2])},
-                    {3, new FieldCursor<double, IStream>((FieldSnapshot*) pSnapFields[3], streams[3])},
-                    {4, new FieldCursor<int, IStream>((FieldSnapshot*) pSnapFields[4], streams[4])},
+                    {"1", new ColumnCursor<double, IStream>((FieldSnapshot*) pSnapFields[1], streams[1])},
+                    {"2", new ColumnCursor<int, IStream>((FieldSnapshot*) pSnapFields[2], streams[2])},
+                    {"3", new ColumnCursor<double, IStream>((FieldSnapshot*) pSnapFields[3], streams[3])},
+                    {"4", new ColumnCursor<int, IStream>((FieldSnapshot*) pSnapFields[4], streams[4])},
                 };
 
-                var cursor = new MultiFieldsCursor<IStream>(fieldCursors);
+                var cursor = new TimeSeriesCursor<IStream>(fieldCursors);
 
                 snapshots.RunMoveNext(cursor);
             }
@@ -166,10 +166,10 @@ namespace Minotaur.Tests.Cursors
 
             public void RunMoveNext(ICursor cursor)
             {
-                var bidProxy = cursor.GetProxy<double>(_bidId);
-                var bsizeProxy = cursor.GetProxy<int>(_bsizeId);
-                var askProxy = cursor.GetProxy<double>(_askId);
-                var asizeProxy = cursor.GetProxy<int>(_asizeId);
+                var bidProxy = cursor.GetProxy<double>(_bidId.ToString());
+                var bsizeProxy = cursor.GetProxy<int>(_bsizeId.ToString());
+                var askProxy = cursor.GetProxy<double>(_askId.ToString());
+                var asizeProxy = cursor.GetProxy<int>(_asizeId.ToString());
 
                 for (var i = 0; i < 5; i++)
                 {

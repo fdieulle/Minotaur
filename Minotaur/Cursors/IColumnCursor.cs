@@ -2,14 +2,14 @@
 
 namespace Minotaur.Cursors
 {
-    public interface IFieldCursor : IDisposable
+    public interface IColumnCursor : IDisposable
     {
         void MoveNext(long ticks);
 
         void Reset();
     }
 
-    public interface IFieldCursor<out T> : IFieldCursor, IFieldProxy<T>
+    public interface IColumnCursor<out T> : IColumnCursor, IFieldProxy<T>
         where T : struct
     { }
 

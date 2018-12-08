@@ -181,7 +181,7 @@ namespace Minotaur.Tests
 
         #endregion
 
-        public static T GetNext<T>(this IFieldCursor<T> cursor, int index)
+        public static T GetNext<T>(this IColumnCursor<T> cursor, int index)
             where T : struct
         {
             cursor.MoveNext(index);

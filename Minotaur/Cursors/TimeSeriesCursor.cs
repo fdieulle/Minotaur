@@ -5,19 +5,19 @@ using Minotaur.Streams;
 
 namespace Minotaur.Cursors
 {
-    public class MultiFieldsCursor<TStream> : ICursor
+    public class TimeSeriesCursor<TStream> : ICursor
         where TStream : IStream
     {
-        private readonly Dictionary<int, FieldCursor<TStream>> _fields;
-        private readonly FieldCursor<TStream>[] _cursors;
+        private readonly Dictionary<string, ColumnCursor<TStream>> _columns;
+        private readonly ColumnCursor<TStream>[] _cursors;
 
         private long _ticks;
         private long _nextTicks;
 
-        public MultiFieldsCursor(Dictionary<int, FieldCursor<TStream>> fields)
+        public TimeSeriesCursor(Dictionary<string, ColumnCursor<TStream>> columns)
         {
-            _fields = fields ?? new Dictionary<int, FieldCursor<TStream>>();
-            _cursors = _fields.Values.ToArray();
+            _columns = columns ?? new Dictionary<string, ColumnCursor<TStream>>();
+            _cursors = _columns.Values.ToArray();
 
             Reset();
         }
@@ -59,9 +59,9 @@ namespace Minotaur.Cursors
                 _cursors[i].Reset();
         }
 
-        public IFieldProxy<T> GetProxy<T>(int fieldId) where T : struct
+        public IFieldProxy<T> GetProxy<T>(string column) where T : struct
         {
-            if (_fields.TryGetValue(fieldId, out var cursor))
+            if (_columns.TryGetValue(column, out var cursor))
                 return cursor as IFieldProxy<T>;
 
             return null;
@@ -69,7 +69,7 @@ namespace Minotaur.Cursors
 
         public void Dispose()
         {
-            _fields.Clear();
+            _columns.Clear();
             Array.Clear(_cursors, 0, _cursors.Length);
         }
     }

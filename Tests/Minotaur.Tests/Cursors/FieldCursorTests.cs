@@ -76,17 +76,17 @@ namespace Minotaur.Tests.Cursors
 
         #endregion
 
-        private static PinnedFieldCursor<T, IStream> CreateCursor<TEntry, T>(TEntry[] chunk)
+        private static PinnedColumnCursor<T, IStream> CreateCursor<TEntry, T>(TEntry[] chunk)
             where T : struct
         {
             var length = chunk.Length * Marshal.SizeOf<TEntry>();
             var memory = new MemoryStream(length);
             memory.WriteAndReset(chunk, Marshal.SizeOf<TEntry>());
 
-            return new PinnedFieldCursor<T, IStream>((p, s) => new FieldCursor<T, IStream>((FieldSnapshot*)p, s), memory);
+            return new PinnedColumnCursor<T, IStream>((p, s) => new ColumnCursor<T, IStream>((FieldSnapshot*)p, s), memory);
         }
 
-        public static PinnedFieldCursor<T, IStream> CreateCursor<TEntry, T>(
+        public static PinnedColumnCursor<T, IStream> CreateCursor<TEntry, T>(
             TEntry[] chunk, ICodec codec)
             where T : struct
         {
@@ -94,25 +94,25 @@ namespace Minotaur.Tests.Cursors
                 new MemoryStream(), codec, 1024);
             columnStream.WriteAndReset(chunk, Natives.SizeOfEntry<TEntry>());
 
-            return new PinnedFieldCursor<T, IStream>((p, s) => new FieldCursor<T, IStream>((FieldSnapshot*)p, s), columnStream);
+            return new PinnedColumnCursor<T, IStream>((p, s) => new ColumnCursor<T, IStream>((FieldSnapshot*)p, s), columnStream);
         }
 
-        protected static void TestFloatEntryCursor(Func<FloatEntry[], IFieldCursor<float>> factory)
+        protected static void TestFloatEntryCursor(Func<FloatEntry[], IColumnCursor<float>> factory)
         {
             TestCursor(p => p.ToFloat(), p => p.value, factory, float.NaN);
         }
 
-        protected static void TestDoubleEntryCursor(Func<DoubleEntry[], IFieldCursor<double>> factory)
+        protected static void TestDoubleEntryCursor(Func<DoubleEntry[], IColumnCursor<double>> factory)
         {
             TestCursor(p => p, p => p.value, factory, double.NaN);
         }
 
-        protected static void TestInt32EntryCursor(Func<Int32Entry[], IFieldCursor<int>> factory)
+        protected static void TestInt32EntryCursor(Func<Int32Entry[], IColumnCursor<int>> factory)
         {
             TestCursor(p => p.ToInt32(), p => p.value, factory);
         }
 
-        protected static void TestInt64EntryCursor(Func<Int64Entry[], IFieldCursor<long>> factory)
+        protected static void TestInt64EntryCursor(Func<Int64Entry[], IColumnCursor<long>> factory)
         {
             TestCursor(p => p.ToInt64(), p => p.value, factory);
         }
@@ -120,7 +120,7 @@ namespace Minotaur.Tests.Cursors
         private static void TestCursor<TEntry, T>(
             Func<DoubleEntry[], TEntry[]> convert,
             Func<TEntry, T> getValue,
-            Func<TEntry[], IFieldCursor<T>> factory,
+            Func<TEntry[], IColumnCursor<T>> factory,
             T defaultValue = default(T))
             where T : struct
         {

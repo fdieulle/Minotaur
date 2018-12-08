@@ -12,6 +12,6 @@ namespace Minotaur.Cursors
 
         void Reset();
 
-        IFieldProxy<T> GetProxy<T>(int fieldId) where T : struct;
+        IFieldProxy<T> GetProxy<T>(string column) where T : struct;
     }
 }

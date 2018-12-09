@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 namespace Minotaur.Native
 {
     [StructLayout(LayoutKind.Explicit, Size = SIZE)]
-    public struct FloatEntry : IEquatable<FloatEntry>
+    public struct FloatEntry : IFieldEntry<float>, IEquatable<FloatEntry>
     {
         public const int SIZE = 12;
 
@@ -12,6 +12,19 @@ namespace Minotaur.Native
         public long ticks;
         [FieldOffset(8)]
         public float value;
+
+        #region IFieldEntry<double>
+
+        long IFieldEntry<float>.Ticks => ticks;
+        float IFieldEntry<float>.Value => value;
+
+        public void Reset()
+        {
+            ticks = Time.MinTicks;
+            value = float.NaN;
+        }
+
+        #endregion
 
         #region Equality members
 

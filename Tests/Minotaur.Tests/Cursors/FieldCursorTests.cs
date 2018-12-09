@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using Minotaur.Codecs;
+using Minotaur.Core;
 using Minotaur.Cursors;
 using Minotaur.Native;
 using Minotaur.Streams;
@@ -76,25 +77,23 @@ namespace Minotaur.Tests.Cursors
 
         #endregion
 
-        private static PinnedColumnCursor<T, IStream> CreateCursor<TEntry, T>(TEntry[] chunk)
-            where T : struct
+        private static IColumnCursor<T> CreateCursor<TEntry, T>(TEntry[] chunk)
+            where TEntry : unmanaged, IFieldEntry<T>
         {
-            var length = chunk.Length * Marshal.SizeOf<TEntry>();
-            var memory = new MemoryStream(length);
-            memory.WriteAndReset(chunk, Marshal.SizeOf<TEntry>());
+            var memory = new MemoryStream(chunk.Length * sizeof(TEntry));
+            memory.WriteAndReset(chunk, sizeof(TEntry));
 
-            return new PinnedColumnCursor<T, IStream>((p, s) => new ColumnCursor<T, IStream>((FieldSnapshot*)p, s), memory);
+            return new ColumnCursor<TEntry, T, IStream>(new DummyPinnedAllocator(), memory);
         }
 
-        public static PinnedColumnCursor<T, IStream> CreateCursor<TEntry, T>(
-            TEntry[] chunk, ICodec codec)
-            where T : struct
+        public static IColumnCursor<T> CreateCursor<TEntry, T>(TEntry[] chunk, ICodec codec)
+            where TEntry : unmanaged, IFieldEntry<T>
         {
             var columnStream = new PinnedColumnStream(
                 new MemoryStream(), codec, 1024);
             columnStream.WriteAndReset(chunk, Natives.SizeOfEntry<TEntry>());
 
-            return new PinnedColumnCursor<T, IStream>((p, s) => new ColumnCursor<T, IStream>((FieldSnapshot*)p, s), columnStream);
+            return new ColumnCursor<TEntry, T, IStream>(new DummyPinnedAllocator(), columnStream);
         }
 
         protected static void TestFloatEntryCursor(Func<FloatEntry[], IColumnCursor<float>> factory)

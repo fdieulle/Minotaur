@@ -8,15 +8,15 @@ namespace Minotaur.Cursors
     public class TimeSeriesCursor<TStream> : ICursor
         where TStream : IStream
     {
-        private readonly Dictionary<string, ColumnCursor<TStream>> _columns;
-        private readonly ColumnCursor<TStream>[] _cursors;
+        private readonly Dictionary<string, IColumnCursor> _columns;
+        private readonly IColumnCursor[] _cursors;
 
         private long _ticks;
         private long _nextTicks;
 
-        public TimeSeriesCursor(Dictionary<string, ColumnCursor<TStream>> columns)
+        public TimeSeriesCursor(Dictionary<string, IColumnCursor> columns)
         {
-            _columns = columns ?? new Dictionary<string, ColumnCursor<TStream>>();
+            _columns = columns ?? new Dictionary<string, IColumnCursor>();
             _cursors = _columns.Values.ToArray();
 
             Reset();
@@ -26,7 +26,7 @@ namespace Minotaur.Cursors
 
         public DateTime MoveNext(DateTime timestamp)
         {
-            // Should not need a while here an if is enough
+            // Todo: Should not need a while here an if is enough
             while (timestamp.Ticks >= _nextTicks)
             {
                 _nextTicks = Time.MaxTicks;
@@ -45,10 +45,7 @@ namespace Minotaur.Cursors
             return new DateTime(_nextTicks);
         }
 
-        public DateTime MoveNextTick()
-        {
-            return MoveNext(new DateTime(_nextTicks));
-        }
+        public DateTime MoveNextTick() => MoveNext(new DateTime(_nextTicks));
 
         public void Reset()
         {

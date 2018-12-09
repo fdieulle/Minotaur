@@ -4,16 +4,18 @@ namespace Minotaur.Cursors
 {
     public interface IColumnCursor : IDisposable
     {
+        long Ticks { get; }
+
+        long NextTicks { get; }
+
         void MoveNext(long ticks);
 
         void Reset();
     }
 
-    public interface IColumnCursor<out T> : IColumnCursor, IFieldProxy<T>
-        where T : struct
-    { }
+    public interface IColumnCursor<out T> : IColumnCursor, IFieldProxy<T> { }
 
-    public interface IFieldProxy<out T> where T : struct
+    public interface IFieldProxy<out T>
     {
         DateTime Timestamp { get; }
 

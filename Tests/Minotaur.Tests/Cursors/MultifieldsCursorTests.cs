@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Minotaur.Codecs;
+using Minotaur.Core;
 using Minotaur.Cursors;
 using Minotaur.Native;
 using Minotaur.Streams;
@@ -50,29 +51,21 @@ namespace Minotaur.Tests.Cursors
                 .Snap("08:00:06", "08:00:04", "Max", 12.6, 2e6, 13.4, 1e6);
 
             #region Prepare memory
-            var bufferSnapshotSize = sizeof(FieldSnapshot) * 4; // snapshot Field cursor requested size
+            var allocator = new DummyPinnedAllocator();
             const int blockSize = 8192;
             var bufferColumnStreamSize = (2 + 2) * blockSize; // buffer reader sizes
             
-            var fullBufferSize = bufferSnapshotSize + bufferColumnStreamSize;
+            var fullBufferSize = bufferColumnStreamSize;
 
             var buffer = Marshal.AllocHGlobal(fullBufferSize);
             try
             {
-                var pSnapFields = new Dictionary<int, IntPtr>
-                {
-                    {1, buffer + sizeof(FieldSnapshot) * 0},
-                    {2, buffer + sizeof(FieldSnapshot) * 1},
-                    {3, buffer + sizeof(FieldSnapshot) * 2},
-                    {4, buffer + sizeof(FieldSnapshot) * 3}
-                };
-
                 var pBufFields = new Dictionary<int, IntPtr>
                 {
-                    {1, buffer + bufferSnapshotSize + blockSize * 0},
-                    {2, buffer + bufferSnapshotSize + blockSize * 1},
-                    {3, buffer + bufferSnapshotSize + blockSize * 2},
-                    {4, buffer + bufferSnapshotSize + blockSize * 3},
+                    {1, buffer + blockSize * 0},
+                    {2, buffer + blockSize * 1},
+                    {3, buffer + blockSize * 2},
+                    {4, buffer + blockSize * 3},
                 };
 
                 #endregion
@@ -103,12 +96,12 @@ namespace Minotaur.Tests.Cursors
 
                 #endregion
 
-                var fieldCursors = new Dictionary<string, ColumnCursor<IStream>>
+                var fieldCursors = new Dictionary<string, IColumnCursor>
                 {
-                    {"1", new ColumnCursor<double, IStream>((FieldSnapshot*) pSnapFields[1], streams[1])},
-                    {"2", new ColumnCursor<int, IStream>((FieldSnapshot*) pSnapFields[2], streams[2])},
-                    {"3", new ColumnCursor<double, IStream>((FieldSnapshot*) pSnapFields[3], streams[3])},
-                    {"4", new ColumnCursor<int, IStream>((FieldSnapshot*) pSnapFields[4], streams[4])},
+                    {"1", new ColumnCursor<DoubleEntry, double, IStream>(allocator, streams[1])},
+                    {"2", new ColumnCursor<Int32Entry, int, IStream>(allocator, streams[2])},
+                    {"3", new ColumnCursor<DoubleEntry, double, IStream>(allocator, streams[3])},
+                    {"4", new ColumnCursor<Int32Entry, int, IStream>(allocator, streams[4])},
                 };
 
                 var cursor = new TimeSeriesCursor<IStream>(fieldCursors);

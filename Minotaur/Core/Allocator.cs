@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Minotaur.Core
 {
-    public unsafe interface IAllocator
+    public unsafe interface IAllocator : IDisposable
     {
         byte* Allocate(int length);
 
@@ -41,6 +41,54 @@ namespace Minotaur.Core
             if(_pointers.TryGetValue((IntPtr)ptr, out var handle) && handle.IsAllocated)
                 handle.Free();
             _pointers.Remove((IntPtr) ptr);
+        }
+
+        #endregion
+
+        #region Implementation of IDisposable
+
+        public void Dispose()
+        {
+            foreach (var handle in _pointers.Values)
+                if(handle.IsAllocated)
+                    handle.Free();
+            _pointers.Clear();
+        }
+
+        #endregion
+    }
+
+    public unsafe class DummyUnmanagedAllocator : IAllocator
+    {
+        private readonly HashSet<IntPtr> _pointers = new HashSet<IntPtr>();
+
+        #region Implementation of IAllocator
+
+        public byte* Allocate(int length)
+        {
+            var ptr = Marshal.AllocHGlobal(length);
+            _pointers.Add(Marshal.AllocHGlobal(length));
+            return (byte*) ptr;
+        }
+
+        public void Free(byte* ptr)
+        {
+            var ip = (IntPtr) ptr;
+
+            if (ip != IntPtr.Zero && _pointers.Remove(ip))
+                Marshal.FreeHGlobal(ip);
+        }
+
+        #endregion
+
+        #region Implementation of IDisposable
+
+        public void Dispose()
+        {
+            foreach (var ptr in _pointers)
+                if (ptr != IntPtr.Zero)
+                    Marshal.FreeHGlobal(ptr);
+            _pointers.Clear();
         }
 
         #endregion

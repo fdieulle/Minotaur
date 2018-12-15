@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using Minotaur.Codecs;
+using Minotaur.Core;
 using Minotaur.Native;
 using Minotaur.Streams;
 using NUnit.Framework;
@@ -14,14 +15,14 @@ namespace Minotaur.Tests.Streams
         [Test]
         public void ReadWriteWorkflowTest()
         {
-            
             var ms = new MemoryStream();
+            var allocator = new DummyUnmanagedAllocator();
+
             const int bufferSize = 1024;
             const int wrapSize = sizeof(int) * 2 + sizeof(byte);
             const int bufferSizeWithoutWrapSize = bufferSize - wrapSize;
             const int fullBufferSize = bufferSize * 5 + 512;
 
-            var buffer = Marshal.AllocHGlobal(bufferSize);
             var wData = Marshal.AllocHGlobal(fullBufferSize);
             var rData = Marshal.AllocHGlobal(fullBufferSize);
 
@@ -29,7 +30,7 @@ namespace Minotaur.Tests.Streams
             wData.SetAll(fullBufferSize, 2);
             rData.SetAll(fullBufferSize, 0);
 
-            var stream = new ColumnStream<MemoryStream, VoidCodec>(ms, new VoidCodec(), (byte*)buffer, bufferSize);
+            var stream = new ColumnStream<MemoryStream, VoidCodec>(ms, new VoidCodec(), allocator, bufferSize);
 
             // 1. Test write less than buffer
             var write = 100;
@@ -73,9 +74,10 @@ namespace Minotaur.Tests.Streams
 
             ReadWf(stream, rData, fullBufferSize, 2, write);
 
-            Marshal.FreeHGlobal(buffer);
+            stream.Dispose();
             Marshal.FreeHGlobal(wData);
             Marshal.FreeHGlobal(rData);
+            allocator.Dispose();
         }
 
         private static void ReadWf<TStream>(TStream stream, IntPtr rData, int len, byte wVal, int wLen)
@@ -172,9 +174,9 @@ namespace Minotaur.Tests.Streams
             where  T : struct
         {
             var memory = new MemoryStream();
+            var allocator = new DummyUnmanagedAllocator();
             
             const int bufferLength = 8192;
-            var buffer = Marshal.AllocHGlobal(bufferLength);
             
             var data = factory(bufferLength / sizeOfT * 21);
             var entry = new byte[sizeOfT];
@@ -183,7 +185,7 @@ namespace Minotaur.Tests.Streams
             try
             {
                 var stream = new ColumnStream<MemoryStream, ICodec>(
-                    memory, codec, (byte*)buffer, bufferLength);
+                    memory, codec, allocator, bufferLength);
 
                 var pdata = (byte*)handle.AddrOfPinnedObject();
 
@@ -208,7 +210,7 @@ namespace Minotaur.Tests.Streams
             finally
             {
                 handle.Free();
-                Marshal.FreeHGlobal(buffer);
+                allocator.Dispose();
             }
         }
 

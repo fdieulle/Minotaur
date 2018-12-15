@@ -28,7 +28,25 @@ namespace Minotaur.Streams
 	///  Bytes    | 
 	/// ----------|-------------------------------
 	/// 1 Byte    | Checksum
-	///  
+	///
+	///
+	/// New proposal:
+	///   Size    | Purpose
+    /// ----------|-------------------------------
+    /// 4 Bytes   | Block size in number of bytes.
+    /// ----------|-------------------------------
+    /// 8 Bytes   | Start timestamp. Maybe this one is useless ?
+    /// ----------|-------------------------------
+    /// 8 Bytes   | End timestamp.
+    /// ----------|-------------------------------
+    /// Data size | Data
+    /// ----------|-------------------------------
+    /// 1-4 Bytes | Number of bytes skipped to go at the end of block.
+    /// ----------|-------------------------------
+    /// Skipped   | Skipped bytes
+    ///  Bytes    | 
+    /// ----------|-------------------------------
+    /// 1 Byte    | Checksum
 	/// </summary>
 	/// <typeparam name="TStream"></typeparam>
 	/// <typeparam name="TCodec"></typeparam>
@@ -48,6 +66,7 @@ namespace Minotaur.Streams
 
         private readonly TStream _underlying;
         private readonly TCodec _codec;
+        private readonly IAllocator _allocator;
 
         private readonly byte* _buffer;
         private byte* _blockEnd;
@@ -57,12 +76,14 @@ namespace Minotaur.Streams
         public ColumnStream(
             TStream underlying,
             TCodec codec,
-            byte* buffer, int length)
+            IAllocator allocator,
+            int capacity = 8192)
         {
             _underlying = underlying;
             _codec = codec;
-            _buffer = buffer;
-            _capacity = length;
+            _allocator = allocator;
+            _capacity = capacity;
+            _buffer = allocator.Allocate(capacity);
             _blockEnd = _offset = _buffer;
         }
 
@@ -107,7 +128,7 @@ namespace Minotaur.Streams
 
         /// <summary>
         /// Write columnar data by choosing the best codec to used. i.e. the best compression we can have.
-        /// It's better to write a suffisant number of column entries to optimise the compression.
+        /// It's better to write a suffisant number of column entries to optimize the compression.
         /// If you write too little bytes you will hurt your performances.
         /// I mean, write data by block is better, but don't worry you can still read entries one by one.
         /// In fact even if you more data than this stream capacity, many blocks of the same capacity will be generated,
@@ -167,6 +188,7 @@ namespace Minotaur.Streams
         public void Dispose()
         {
             Flush();
+            _allocator.Free(_buffer);
             _underlying.Dispose();
         }
     }

@@ -89,11 +89,12 @@ namespace Minotaur.Tests.Cursors
         public static IColumnCursor<T> CreateCursor<TEntry, T>(TEntry[] chunk, ICodec codec)
             where TEntry : unmanaged, IFieldEntry<T>
         {
-            var columnStream = new PinnedColumnStream(
-                new MemoryStream(), codec, 1024);
+            var allocator = new DummyPinnedAllocator();
+            var columnStream = new ColumnStream<MemoryStream, ICodec>(
+                new MemoryStream(), codec, allocator, 1024);
             columnStream.WriteAndReset(chunk, Natives.SizeOfEntry<TEntry>());
 
-            return new ColumnCursor<TEntry, T, IStream>(new DummyPinnedAllocator(), columnStream);
+            return new ColumnCursor<TEntry, T, IStream>(allocator, columnStream);
         }
 
         protected static void TestFloatEntryCursor(Func<FloatEntry[], IColumnCursor<float>> factory)

@@ -25,6 +25,7 @@ namespace Minotaur.Benchmarks
         private ColumnStreamNew<MemoryStream, VoidCodec> _csFullClass;
         private ColumnStreamNew<MemoryStream, TemplateVoidCodec> _csTemplateCodec1;
         private ColumnStreamNew<TemplateMemoryStream, TemplateVoidCodec> _csFullTemplateCodec;
+        private readonly IAllocator _allocator = new DummyUnmanagedAllocator();
         private readonly List<IntPtr> _unmanagedPtr = new List<IntPtr>();
         private readonly List<IStream> _streams = new List<IStream>();
         private byte* _rData;
@@ -48,6 +49,7 @@ namespace Minotaur.Benchmarks
         [GlobalCleanup]
         public void Cleanup()
         {
+            _allocator.Dispose();
             _unmanagedPtr.ForEach(Marshal.FreeHGlobal);
             _unmanagedPtr.Clear();
             _streams.ForEach(p => p.Dispose());
@@ -113,11 +115,8 @@ namespace Minotaur.Benchmarks
             where TCodec : ICodec
         {
             var memory = new MemoryStream();
-            const int bufferSize = 1024;
-            var buffer = Marshal.AllocHGlobal(bufferSize);
-            _unmanagedPtr.Add(buffer);
 
-            var stream = new ColumnStream<MemoryStream, TCodec>(memory, codec, (byte*)buffer, bufferSize);
+            var stream = new ColumnStream<MemoryStream, TCodec>(memory, codec, _allocator, 1024);
             stream.WriteAndReset(data, sizeof(byte));
 
             _streams.Add(stream);
@@ -128,11 +127,8 @@ namespace Minotaur.Benchmarks
             where TCodec : ICodec
         {
             var memory = new TemplateMemoryStream(8192);
-            const int bufferSize = 1024;
-            var buffer = Marshal.AllocHGlobal(bufferSize);
-            _unmanagedPtr.Add(buffer);
 
-            var stream = new ColumnStream<TemplateMemoryStream, TCodec>(memory, codec, (byte*)buffer, bufferSize);
+            var stream = new ColumnStream<TemplateMemoryStream, TCodec>(memory, codec, _allocator, 1024);
             stream.WriteAndReset(data, sizeof(byte));
 
             _streams.Add(stream);

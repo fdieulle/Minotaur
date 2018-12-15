@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using Minotaur.Codecs;
 using Minotaur.Core;
 using Minotaur.Cursors;
@@ -50,35 +49,22 @@ namespace Minotaur.Tests.Cursors
                 .Snap("08:00:05", "08:00:04", "Max", 12.6, 2e6, 13.4, 1e6)
                 .Snap("08:00:06", "08:00:04", "Max", 12.6, 2e6, 13.4, 1e6);
 
-            #region Prepare memory
-            var allocator = new DummyPinnedAllocator();
+            var allocator = new DummyUnmanagedAllocator();
             const int blockSize = 8192;
-            var bufferColumnStreamSize = (2 + 2) * blockSize; // buffer reader sizes
-            
-            var fullBufferSize = bufferColumnStreamSize;
 
-            var buffer = Marshal.AllocHGlobal(fullBufferSize);
             try
             {
-                var pBufFields = new Dictionary<int, IntPtr>
-                {
-                    {1, buffer + blockSize * 0},
-                    {2, buffer + blockSize * 1},
-                    {3, buffer + blockSize * 2},
-                    {4, buffer + blockSize * 3},
-                };
 
-                #endregion
 
                 #region Prepare streams
 
                 // Create streams
                 var streams = new Dictionary<int, IStream>
                 {
-                    {1, CreateColumnStream(new VoidCodec(), pBufFields[1], blockSize)},
-                    {2, CreateColumnStream(new VoidCodec(), pBufFields[2], blockSize)},
-                    {3, CreateColumnStream(new VoidCodec(), pBufFields[3], blockSize)},
-                    {4, CreateColumnStream(new VoidCodec(), pBufFields[4], blockSize)}
+                    {1, CreateColumnStream(new VoidCodec(), allocator, blockSize)},
+                    {2, CreateColumnStream(new VoidCodec(), allocator, blockSize)},
+                    {3, CreateColumnStream(new VoidCodec(), allocator, blockSize)},
+                    {4, CreateColumnStream(new VoidCodec(), allocator, blockSize)}
                 };
 
                 // Fill streams
@@ -110,16 +96,16 @@ namespace Minotaur.Tests.Cursors
             }
             finally
             {
-                Marshal.FreeHGlobal(buffer);
+                allocator.Dispose();
             }
         }
 
-        protected static ColumnStream<MemoryStream, ICodec> CreateColumnStream(ICodec codec, IntPtr buf, int bufLen)
+        protected static ColumnStream<MemoryStream, ICodec> CreateColumnStream(ICodec codec, IAllocator allocator, int bufLen)
         {
             return new ColumnStream<MemoryStream, ICodec>(
                 new MemoryStream(),
                 codec,
-                (byte*)buf,
+                allocator,
                 bufLen);
         }
 

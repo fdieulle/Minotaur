@@ -4,6 +4,8 @@ using Minotaur.Codecs;
 using Minotaur.Core;
 using Minotaur.Cursors;
 using Minotaur.Native;
+using Minotaur.Pocs.Codecs;
+using Minotaur.Pocs.Streams;
 using Minotaur.Streams;
 using NUnit.Framework;
 
@@ -61,10 +63,10 @@ namespace Minotaur.Tests.Cursors
                 // Create streams
                 var streams = new Dictionary<int, IStream>
                 {
-                    {1, CreateColumnStream(new VoidCodec(), allocator, blockSize)},
-                    {2, CreateColumnStream(new VoidCodec(), allocator, blockSize)},
-                    {3, CreateColumnStream(new VoidCodec(), allocator, blockSize)},
-                    {4, CreateColumnStream(new VoidCodec(), allocator, blockSize)}
+                    {1, CreateColumnStream(new VoidCodecFullStream(), allocator, blockSize)},
+                    {2, CreateColumnStream(new VoidCodecFullStream(), allocator, blockSize)},
+                    {3, CreateColumnStream(new VoidCodecFullStream(), allocator, blockSize)},
+                    {4, CreateColumnStream(new VoidCodecFullStream(), allocator, blockSize)}
                 };
 
                 // Fill streams
@@ -100,9 +102,9 @@ namespace Minotaur.Tests.Cursors
             }
         }
 
-        protected static ColumnStream<MemoryStream, ICodec> CreateColumnStream(ICodec codec, IAllocator allocator, int bufLen)
+        protected static IStream CreateColumnStream(ICodecFullStream codec, IAllocator allocator, int bufLen)
         {
-            return new ColumnStream<MemoryStream, ICodec>(
+            return new ColumnStreamFullStream<MemoryStream, ICodecFullStream>(
                 new MemoryStream(),
                 codec,
                 allocator,

@@ -11,10 +11,10 @@ namespace Minotaur.Benchmarks
     {
         static void Main(string[] args)
         {
-            //BenchmarkRunner.Run<MinMaxBranchless>();
-            foreach (var cacheMemory in GetCacheInfo())
-                Console.WriteLine(cacheMemory);
-            Console.ReadLine();
+            BenchmarkRunner.Run<ColumnStreamBenchmark>();
+            //foreach (var cacheMemory in GetCacheInfo())
+            //    Console.WriteLine(cacheMemory);
+            //Console.ReadLine();
         }
 
         public static List<CacheMemory> GetCacheInfo()

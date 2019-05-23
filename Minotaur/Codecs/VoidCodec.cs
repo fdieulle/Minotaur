@@ -7,31 +7,18 @@ namespace Minotaur.Codecs
     {
         #region Implementation of ICodec
 
+        public int GetMaxEncodedSize(int size) => size;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int Encode(ref byte* src, int lSrc, ref byte* dst, int lDst)
+        public int Encode(byte* src, int lSrc, byte* dst)
         {
-            var count = Math.Min(lSrc, lDst);
-            Buffer.MemoryCopy(src, dst, count, count);
-            src += count;
-            dst += count;
-            return count;
+            Buffer.MemoryCopy(src, dst, lSrc, lSrc);
+            return lSrc;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int DecodeHead(ref byte* src, int len)
-        {
-            return 0;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int Decode(ref byte* src, int lSrc, ref byte* dst, int lDst)
-        {
-            var count = Math.Min(lSrc, lDst);
-            Buffer.MemoryCopy(src, dst, count, count);
-            src += count;
-            dst += count;
-            return count;
-        }
+        public void Decode(byte* src, int lSrc, byte* dst) 
+            => Buffer.MemoryCopy(src, dst, lSrc, lSrc);
 
         #endregion
     }

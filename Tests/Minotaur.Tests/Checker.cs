@@ -1,4 +1,5 @@
 ﻿using System;
+using Minotaur.Core;
 using Minotaur.Native;
 using Minotaur.Providers;
 using Minotaur.Streams;
@@ -32,6 +33,21 @@ namespace Minotaur.Tests
         {
             stream.Position.Check(position);
             stream.Reset();
+        }
+
+        public static void All(this UnsafeBuffer buffer, byte value) 
+            => buffer.AllInRange(0, buffer.Length - 1, value);
+
+        public static void AllUntil(this UnsafeBuffer buffer, int offset, byte value)
+            => buffer.AllInRange(0, offset, value);
+
+        public static void AllFrom(this UnsafeBuffer buffer, int offset, byte value)
+            => buffer.AllInRange(offset, buffer.Length - 1, value);
+
+        public static void AllInRange(this UnsafeBuffer buffer, int left, int right, byte value)
+        {
+            for (var i = left; i <= right; i++)
+                Assert.AreEqual(value, buffer.Data[i], $"At idx {i}");
         }
 
         public static void CheckAll(this IntPtr p, int length, byte value, int start = 0)

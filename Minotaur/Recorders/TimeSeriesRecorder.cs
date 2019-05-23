@@ -87,7 +87,7 @@ namespace Minotaur.Recorders
                     FilePath = _filePathProvider.GetFilePath(_symbol, column, _currentTimestamp)
                 };
 
-                // be sure that there is no hole between timelines
+                // be sure that there is no hole between time lines
                 if (tuple != null)
                     tuple.Meta.End = _currentTimestamp;
                 

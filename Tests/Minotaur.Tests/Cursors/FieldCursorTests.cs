@@ -4,6 +4,8 @@ using Minotaur.Codecs;
 using Minotaur.Core;
 using Minotaur.Cursors;
 using Minotaur.Native;
+using Minotaur.Pocs.Codecs;
+using Minotaur.Pocs.Streams;
 using Minotaur.Streams;
 using NUnit.Framework;
 using MemoryStream = Minotaur.Streams.MemoryStream;
@@ -24,7 +26,7 @@ namespace Minotaur.Tests.Cursors
         [Test]
         public void FloatCursorWithVoidCodecTest()
         {
-            TestFloatEntryCursor(p => CreateCursor<FloatEntry, float>(p, new VoidCodec()));
+            TestFloatEntryCursor(p => CreateCursor<FloatEntry, float>(p, new VoidCodecFullStream()));
         }
 
         #endregion
@@ -40,7 +42,7 @@ namespace Minotaur.Tests.Cursors
         [Test]
         public void DoubleCursorWithVoidCodecTest()
         {
-            TestDoubleEntryCursor(p => CreateCursor<DoubleEntry, double>(p, new VoidCodec()));
+            TestDoubleEntryCursor(p => CreateCursor<DoubleEntry, double>(p, new VoidCodecFullStream()));
         }
 
         #endregion
@@ -56,7 +58,7 @@ namespace Minotaur.Tests.Cursors
         [Test]
         public void Int32CursorWithVoidCodecTest()
         {
-            TestInt32EntryCursor(p => CreateCursor<Int32Entry, int>(p, new VoidCodec()));
+            TestInt32EntryCursor(p => CreateCursor<Int32Entry, int>(p, new VoidCodecFullStream()));
         }
 
         #endregion
@@ -72,7 +74,7 @@ namespace Minotaur.Tests.Cursors
         [Test]
         public void Int64CursorWithVoidCodecTest()
         {
-            TestInt64EntryCursor(p => CreateCursor<Int64Entry, long>(p, new VoidCodec()));
+            TestInt64EntryCursor(p => CreateCursor<Int64Entry, long>(p, new VoidCodecFullStream()));
         }
 
         #endregion
@@ -86,11 +88,11 @@ namespace Minotaur.Tests.Cursors
             return new ColumnCursor<TEntry, T, IStream>(new DummyPinnedAllocator(), memory);
         }
 
-        public static IColumnCursor<T> CreateCursor<TEntry, T>(TEntry[] chunk, ICodec codec)
+        public static IColumnCursor<T> CreateCursor<TEntry, T>(TEntry[] chunk, ICodecFullStream codec)
             where TEntry : unmanaged, IFieldEntry<T>
         {
             var allocator = new DummyPinnedAllocator();
-            var columnStream = new ColumnStream<MemoryStream, ICodec>(
+            var columnStream = new ColumnStreamFullStream<MemoryStream, ICodecFullStream>(
                 new MemoryStream(), codec, allocator, 1024);
             columnStream.WriteAndReset(chunk, Natives.SizeOfEntry<TEntry>());
 

@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using Minotaur.Codecs;
 using Minotaur.Native;
+using Minotaur.Pocs.Codecs;
 using NUnit.Framework;
 
 namespace Minotaur.Tests.Codecs
@@ -158,11 +159,11 @@ namespace Minotaur.Tests.Codecs
         [Test]
         public unsafe void TestNoCompressionCodec()
         {
-            CheckCodec(new VoidCodec(), p => Factory.CreateDoubleChunk(p), sizeof(DoubleEntry), checkDecodeHeadInMove: false);
-            CheckCodec(new VoidCodec(), p => Factory.CreateInt32Chunk(p), sizeof(Int32Entry), checkDecodeHeadInMove: false);
+            CheckCodec(new VoidCodecFullStream(), p => Factory.CreateDoubleChunk(p), sizeof(DoubleEntry), checkDecodeHeadInMove: false);
+            CheckCodec(new VoidCodecFullStream(), p => Factory.CreateInt32Chunk(p), sizeof(Int32Entry), checkDecodeHeadInMove: false);
         }
 
-        private static unsafe void CheckCodec<T>(ICodec codec, 
+        private static unsafe void CheckCodec<T>(ICodecFullStream codec, 
             Func<int, T[]> factory, 
             int sizeOfData,
             int bufferLength = 8192,

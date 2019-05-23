@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Minotaur\Minotaur.csproj" />
+    <ProjectReference Include="..\Minotaur.Pocs\Minotaur.Pocs.csproj" />
   </ItemGroup>
 
 </Project>

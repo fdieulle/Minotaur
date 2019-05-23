@@ -6,6 +6,8 @@ using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
 using Minotaur.Codecs;
 using Minotaur.Core;
+using Minotaur.Pocs.Codecs;
+using Minotaur.Pocs.Streams;
 using Minotaur.Streams;
 using Minotaur.Tests;
 using MemoryStream = Minotaur.Streams.MemoryStream;
@@ -19,16 +21,13 @@ namespace Minotaur.Benchmarks
     {
         private const int WROTE = 1024 * 5;
         private const int READ = 256;
-        private ColumnStream<MemoryStream, VoidCodec> _csFullClassBase;
-        private ColumnStream<MemoryStream, TemplateVoidCodec> _csTemplateCodecBase;
-        private ColumnStream<TemplateMemoryStream, TemplateVoidCodec> _csFullTemplateBase;
-        private ColumnStreamNew<MemoryStream, VoidCodec> _csFullClass;
-        private ColumnStreamNew<MemoryStream, TemplateVoidCodec> _csTemplateCodec1;
-        private ColumnStreamNew<TemplateMemoryStream, TemplateVoidCodec> _csFullTemplateCodec;
+        private ColumnStreamFullStream<MemoryStream, VoidCodecFullStream> _csFullClassBase;
+        private ColumnStream<VoidCodec> _csFullClass;
         private readonly IAllocator _allocator = new DummyUnmanagedAllocator();
         private readonly List<IntPtr> _unmanagedPtr = new List<IntPtr>();
         private readonly List<IStream> _streams = new List<IStream>();
         private byte* _rData;
+        private byte[] _readData;
 
         [GlobalSetup]
         public void Setup()
@@ -37,13 +36,14 @@ namespace Minotaur.Benchmarks
             var ptr = Marshal.AllocHGlobal(READ);
             _unmanagedPtr.Add(ptr);
             _rData = (byte*)ptr;
+            _readData = new byte[READ];
 
-            _csFullClassBase = CreateCsb(new VoidCodec(), data);
-            _csTemplateCodecBase = CreateCsb(new TemplateVoidCodec(), data);
-            _csFullTemplateBase = CreateCstb(new TemplateVoidCodec(), data);
+            _csFullClassBase = CreateCsb(new VoidCodecFullStream(), data);
+            //_csTemplateCodecBase = CreateCsb(new TemplateVoidCodec(), data);
+            //_csFullTemplateBase = CreateCstb(new TemplateVoidCodec(), data);
             _csFullClass = CreateCs(new VoidCodec(), data);
-            _csTemplateCodec1 = CreateCs(new TemplateVoidCodec(), data);
-            _csFullTemplateCodec = CreateCst(new TemplateVoidCodec(), data);
+            //_csTemplateCodec1 = CreateCs(new TemplateVoidCodec(), data);
+            //_csFullTemplateCodec = CreateCst(new TemplateVoidCodec(), data);
         }
 
         [GlobalCleanup]
@@ -65,25 +65,25 @@ namespace Minotaur.Benchmarks
             return read;
         }
 
-        [Benchmark(Description = "Base Template codec")]
-        public int BaseTemplateCodec()
-        {
-            var read = 0;
-            for (var i = 0; i < WROTE; i += READ)
-                read += _csTemplateCodecBase.Read(_rData, READ);
-            return read;
-        }
+        //[Benchmark(Description = "Base Template codec")]
+        //public int BaseTemplateCodec()
+        //{
+        //    var read = 0;
+        //    for (var i = 0; i < WROTE; i += READ)
+        //        read += _csTemplateCodecBase.Read(_rData, READ);
+        //    return read;
+        //}
 
-        [Benchmark(Description = "Base Full template")]
-        public int BaseFullTemplate()
-        {
-            var read = 0;
-            for (var i = 0; i < WROTE; i += READ)
-                read += _csFullTemplateBase.Read(_rData, READ);
-            return read;
-        }
+        //[Benchmark(Description = "Base Full template")]
+        //public int BaseFullTemplate()
+        //{
+        //    var read = 0;
+        //    for (var i = 0; i < WROTE; i += READ)
+        //        read += _csFullTemplateBase.Read(_rData, READ);
+        //    return read;
+        //}
 
-        [Benchmark(Description = "Full class")]
+        [Benchmark(Description = "IStream")]
         public int FullClass()
         {
             var read = 0;
@@ -92,58 +92,45 @@ namespace Minotaur.Benchmarks
             return read;
         }
 
-        [Benchmark(Description = "Template codec")]
-        public int TemplateCodec()
-        {
-            var read = 0;
-            for (var i = 0; i < WROTE; i += READ)
-                read += _csTemplateCodec1.Read(_rData, READ);
-            return read;
-        }
-        
+        //[Benchmark(Description = "Full Template")]
+        //public int FullTemplateCodec()
+        //{
+        //    var read = 0;
+        //    for (var i = 0; i < WROTE; i += READ)
+        //        read += _csFullTemplateCodec.Read(_rData, READ);
+        //    return read;
+        //}
 
-        [Benchmark(Description = "Full Template")]
-        public int FullTemplateCodec()
-        {
-            var read = 0;
-            for (var i = 0; i < WROTE; i += READ)
-                read += _csFullTemplateCodec.Read(_rData, READ);
-            return read;
-        }
-
-        private ColumnStream<MemoryStream, TCodec> CreateCsb<TCodec>(TCodec codec, byte[] data)
-            where TCodec : ICodec
+        private ColumnStreamFullStream<MemoryStream, TCodec> CreateCsb<TCodec>(TCodec codec, byte[] data)
+            where TCodec : ICodecFullStream
         {
             var memory = new MemoryStream();
 
-            var stream = new ColumnStream<MemoryStream, TCodec>(memory, codec, _allocator, 1024);
+            var stream = new ColumnStreamFullStream<MemoryStream, TCodec>(memory, codec, _allocator, 1024);
             stream.WriteAndReset(data, sizeof(byte));
 
             _streams.Add(stream);
             return stream;
         }
 
-        private ColumnStream<TemplateMemoryStream, TCodec> CreateCstb<TCodec>(TCodec codec, byte[] data)
-            where TCodec : ICodec
+        private ColumnStreamFullStream<TemplateMemoryStream, TCodec> CreateCstb<TCodec>(TCodec codec, byte[] data)
+            where TCodec : ICodecFullStream
         {
             var memory = new TemplateMemoryStream(8192);
 
-            var stream = new ColumnStream<TemplateMemoryStream, TCodec>(memory, codec, _allocator, 1024);
+            var stream = new ColumnStreamFullStream<TemplateMemoryStream, TCodec>(memory, codec, _allocator, 1024);
             stream.WriteAndReset(data, sizeof(byte));
 
             _streams.Add(stream);
             return stream;
         }
         
-        private ColumnStreamNew<MemoryStream, TCodec> CreateCs<TCodec>(TCodec codec, byte[] data)
+        private ColumnStream<TCodec> CreateCs<TCodec>(TCodec codec, byte[] data)
             where TCodec : ICodec
         {
-            var memory = new MemoryStream();
-            const int bufferSize = 1024;
-            var buffer = Marshal.AllocHGlobal(bufferSize);
-            _unmanagedPtr.Add(buffer);
+            var memory = new System.IO.MemoryStream();
 
-            var stream = new ColumnStreamNew<MemoryStream, TCodec>(memory, codec, (byte*)buffer, bufferSize);
+            var stream = new ColumnStream<TCodec>(memory, codec, 16, 1024);
             stream.WriteAndReset(data, sizeof(byte));
 
             _streams.Add(stream);
@@ -151,7 +138,7 @@ namespace Minotaur.Benchmarks
         }
 
         private ColumnStreamNew<TemplateMemoryStream, TCodec> CreateCst<TCodec>(TCodec codec, byte[] data)
-            where TCodec : ICodec
+            where TCodec : ICodecFullStream
         {
             var memory = new TemplateMemoryStream(8192);
             const int bufferSize = 1024;
@@ -166,7 +153,7 @@ namespace Minotaur.Benchmarks
         }
     }
 
-    public unsafe struct TemplateVoidCodec : ICodec
+    public unsafe struct TemplateVoidCodecFullStream : ICodecFullStream
     {
         #region Implementation of ICodec
 
@@ -331,7 +318,7 @@ namespace Minotaur.Benchmarks
 	/// <typeparam name="TCodec"></typeparam>
 	public unsafe class ColumnStreamNew<TStream, TCodec> : IStream
         where TStream : IStream
-        where TCodec : ICodec
+        where TCodec : ICodecFullStream
     {
         private const int HEAD_SIZE = sizeof(int);
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using Minotaur.Core;
 using Minotaur.Cursors;
 using Minotaur.Native;
 using Minotaur.Recorders;
@@ -188,14 +189,19 @@ namespace Minotaur.Tests
             return cursor.Value;
         }
 
-        public static int Floor(this int x, int qo)
-        {
-            return x / qo * qo;
-        }
+        public static int Floor(this int x, int qo) => x / qo * qo;
 
-        public static unsafe void SetAll(this IntPtr ptr, int length, byte value)
+        public static unsafe void SetAll(this UnsafeBuffer buffer, byte value) 
+            => SetAll(buffer.Ptr, buffer.Length, value);
+
+        public static unsafe void SetAllUntil(this UnsafeBuffer buffer, int length, byte value)
+            => SetAll(buffer.Ptr, length, value);
+
+        public static unsafe void SetAll(this IntPtr ptr, int length, byte value) 
+            => SetAll((byte*)ptr, length, value);
+
+        private static unsafe void SetAll(byte* p, int length, byte value)
         {
-            var p = (byte*)ptr;
             for (var i = 0; i < length; i++)
                 *(p + i) = value;
         }

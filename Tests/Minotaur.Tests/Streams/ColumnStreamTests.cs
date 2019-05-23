@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Minotaur.Codecs;
 using Minotaur.Core;
 using Minotaur.Native;
+using Minotaur.Pocs.Codecs;
 using Minotaur.Streams;
 using NUnit.Framework;
 using MemoryStream = Minotaur.Streams.MemoryStream;
@@ -12,89 +13,107 @@ namespace Minotaur.Tests.Streams
     [TestFixture]
     public unsafe class ColumnStreamTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            OnSetup();
+        }
+
+        [TearDown]
+        public void Teardown()
+        {
+            OnTeardown();
+        }
+
+        protected virtual void OnSetup() { }
+        protected virtual void OnTeardown() { }
+
+        protected virtual IStream CreateColumnStream<TEntry>(int bufferSize)
+            where TEntry : unmanaged 
+            => new ColumnStream<VoidCodec>(
+                new System.IO.MemoryStream(), 
+                new VoidCodec(), 
+                sizeof(TEntry), bufferSize);
+
         [Test]
         public void ReadWriteWorkflowTest()
         {
-            var ms = new MemoryStream();
-            var allocator = new DummyUnmanagedAllocator();
+            var ms = new System.IO.MemoryStream();
 
             const int bufferSize = 1024;
-            const int wrapSize = sizeof(int) * 2 + sizeof(byte);
-            const int bufferSizeWithoutWrapSize = bufferSize - wrapSize;
+            var wrapSize = sizeof(PayloadHeader) + sizeof(byte);
+            var bufferSizeWithoutWrapSize = bufferSize - wrapSize;
             const int fullBufferSize = bufferSize * 5 + 512;
 
-            var wData = Marshal.AllocHGlobal(fullBufferSize);
-            var rData = Marshal.AllocHGlobal(fullBufferSize);
+            var writeBuffer = new UnsafeBuffer(fullBufferSize);
+            var readBuffer = new UnsafeBuffer(fullBufferSize);
 
-            
-            wData.SetAll(fullBufferSize, 2);
-            rData.SetAll(fullBufferSize, 0);
+            writeBuffer.SetAll(2);
+            readBuffer.SetAll(0);
 
-            var stream = new ColumnStream<MemoryStream, VoidCodec>(ms, new VoidCodec(), allocator, bufferSize);
+            var stream = new ColumnStream<VoidCodec>(ms, new VoidCodec(), 1, bufferSize);
 
             // 1. Test write less than buffer
             var write = 100;
-            var wrote = stream.Write((byte*)wData, write);
+            var wrote = stream.Write(writeBuffer.Ptr, write);
             wrote.Check(write);
             ms.Position.Check(0);
 
             stream.Flush();
-            ms.Position.Check(bufferSize);
+            ms.Position.Check(write + wrapSize);
             
-            ReadWf(stream, rData, fullBufferSize, 2, write);
+            ReadWf(stream, readBuffer, fullBufferSize, 2, write);
 
             // 2. Test write more than buffer
-            wData.SetAll(fullBufferSize, 2);
+            writeBuffer.SetAll(2);
             stream.Reset();
             ms.SetLength(0);
 
             write = bufferSize * 4 + 512;
-            wrote = stream.Write((byte*)wData, write);
+            wrote = stream.Write(writeBuffer.Ptr, write);
             wrote.Check(write);
-            ms.Position.Check(bufferSize * 4);
+            ms.Position.Check((bufferSize + wrapSize) * 4);
 
             stream.Flush();
-            ms.Position.Check(bufferSize * 5);
+            ms.Position.Check(write + 5 * wrapSize);
             
-            ReadWf(stream, rData, fullBufferSize, 2, write);
+            ReadWf(stream, readBuffer, fullBufferSize, 2, write);
 
             // 2. Test write exactly buffer size
-            wData.SetAll(bufferSizeWithoutWrapSize, 2);
+            writeBuffer.SetAllUntil(bufferSizeWithoutWrapSize, 2);
             stream.Reset();
             ms.SetLength(0);
 
-            write = bufferSizeWithoutWrapSize;
-            wrote = stream.Write((byte*)wData, write);
+            write = bufferSize;
+            wrote = stream.Write(writeBuffer.Ptr, write);
             wrote.Check(write);
-            ms.Position.Check(bufferSize);
+            ms.Position.Check(bufferSize + wrapSize);
 
             stream.Flush();
-            ms.Position.Check(bufferSize);
+            ms.Position.Check(bufferSize + wrapSize);
             stream.Reset();
 
-            ReadWf(stream, rData, fullBufferSize, 2, write);
+            ReadWf(stream, readBuffer, fullBufferSize, 2, write);
 
             stream.Dispose();
-            Marshal.FreeHGlobal(wData);
-            Marshal.FreeHGlobal(rData);
-            allocator.Dispose();
+            writeBuffer.Dispose();
+            readBuffer.Dispose();
         }
 
-        private static void ReadWf<TStream>(TStream stream, IntPtr rData, int len, byte wVal, int wLen)
-            where TStream : IStream
+        private static void ReadWf(IStream stream, UnsafeBuffer rData, int len, byte wVal, int wLen)
         {
             // Clean
-            rData.SetAll(len, 0);
+            rData.SetAll(0);
             stream.Reset();
 
             // 1.1 Read more than wrote
-            var read = stream.Read((byte*)rData, wLen * 2);
+            var read = stream.Read(rData.Ptr, wLen * 2);
             read.Check(wLen);
-            rData.CheckAll(wLen, wVal);
-            rData.CheckAll(len - wLen, 0, wLen);
+            rData.AllUntil(wLen - 1, wVal);
+            rData.AllFrom(wLen, 0);
 
             // Clean
-            rData.SetAll(len, 0);
+            rData.SetAll(0);
             stream.Reset();
 
             // 1.2 Read less than wrote and until after end
@@ -102,94 +121,78 @@ namespace Minotaur.Tests.Streams
             var splitLen = wLen / split;
             for (var i = 0; i < split; i++)
             {
-                read = stream.Read(((byte*)rData) + (splitLen * i), splitLen);
+                read = stream.Read(rData.Ptr + (splitLen * i), splitLen);
                 read.Check(splitLen);
-                rData.CheckAll(splitLen * i, wVal);
-                rData.CheckAll(len - splitLen * (i + 1), 0, splitLen * (i + 1));
+                rData.AllUntil(splitLen * i - 1, wVal);
+                rData.AllFrom(splitLen * (i + 1), 0);
             }
 
             var remaining = wLen - splitLen * split;
-            read = stream.Read((byte*)rData + splitLen * split, splitLen);
+            read = stream.Read(rData.Ptr + splitLen * split, splitLen);
             read.Check(remaining);
-            rData.CheckAll(wLen, wVal);
-            rData.CheckAll(len - wLen, 0, wLen);
+            rData.AllUntil(wLen - 1, wVal);
+            rData.AllFrom(wLen, 0);
 
             // Clean
-            rData.SetAll(len, 0);
+            rData.SetAll(0);
             stream.Reset();
 
             // 1.3 Read exactly the neumber of byte wrote
-            read = stream.Read((byte*)rData, wLen);
+            read = stream.Read(rData.Ptr, wLen);
             read.Check(wLen);
-            rData.CheckAll(wLen, wVal);
-            rData.CheckAll(len - wLen, 0, wLen);
+            rData.AllUntil(wLen - 1, wVal);
+            rData.AllFrom(wLen, 0);
 
-            read = stream.Read((byte*)rData + wLen, wLen);
+            read = stream.Read(rData.Ptr + wLen, wLen);
             read.Check(0);
-            rData.CheckAll(wLen, wVal);
-            rData.CheckAll(len - wLen, 0, wLen);
+            rData.AllUntil(wLen - 1, wVal);
+            rData.AllFrom(wLen, 0);
 
             // Clean
-            rData.SetAll(len, 0);
+            rData.SetAll(0);
             stream.Reset();
         }
 
         [Test]
         public void TimelineTicksTest()
-        {
-            CheckStream(new VoidCodec(), p => Factory.CreateTimelineTicks(p), sizeof(long));
-        }
+            => CheckStream(p => Factory.CreateTimelineTicks(p));
 
         [Test]
         public void VoidCodecForInt32EntryTest()
-        {
-            CheckStream(new VoidCodec(), p => Factory.CreateInt32Chunk(p), sizeof(Int32Entry));
-        }
+            => CheckStream(p => Factory.CreateInt32Chunk(p));
 
         [Test]
         public void VoidCodecForDoubleEntryTest()
-        {
-            CheckStream(new VoidCodec(), p => Factory.CreateDoubleChunk(p), sizeof(DoubleEntry));
-        }
+            => CheckStream(p => Factory.CreateDoubleChunk(p));
 
         [Test]
         public void VoidCodecForInt64EntryTest()
-        {
-            CheckStream(new VoidCodec(), p => Factory.CreateInt64Chunk(p), sizeof(Int64Entry));
-        }
+            => CheckStream(p => Factory.CreateInt64Chunk(p));
 
         [Test]
         public void VoidCodecForFloatEntryTest()
-        {
-            CheckStream(new VoidCodec(), p => Factory.CreateFloatChunk(p), sizeof(FloatEntry));
-        }
+            => CheckStream(p => Factory.CreateFloatChunk(p));
 
         [Test]
         public void VoidCodecForStringEntryTest()
-        {
-            CheckStream(new VoidCodec(), p => Factory.CreateStringChunk(p), sizeof(StringEntry));
-        }
+            => CheckStream(p => Factory.CreateStringChunk(p));
 
-        private static void CheckStream<T>(ICodec codec, Func<int, T[]> factory, int sizeOfT)
-            where  T : struct
+        private void CheckStream<T>(Func<int, T[]> factory)
+            where T : unmanaged
         {
-            var memory = new MemoryStream();
-            var allocator = new DummyUnmanagedAllocator();
-            
             const int bufferLength = 8192;
-            
-            var data = factory(bufferLength / sizeOfT * 21);
-            var entry = new byte[sizeOfT];
+
+            var data = factory(bufferLength / sizeof(T) * 21);
+            var entry = new byte[sizeof(T)];
 
             var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
             try
             {
-                var stream = new ColumnStream<MemoryStream, ICodec>(
-                    memory, codec, allocator, bufferLength);
+                var stream = CreateColumnStream<T>(bufferLength);
 
                 var pdata = (byte*)handle.AddrOfPinnedObject();
 
-                stream.Write(pdata, data.Length * sizeOfT);
+                stream.Write(pdata, data.Length * sizeof(T));
                 stream.Flush();
 
                 stream.Reset();
@@ -197,10 +200,10 @@ namespace Minotaur.Tests.Streams
                 var counter = 0;
                 fixed (byte* p = entry)
                 {
-                    while (stream.Read(p, sizeOfT) > 0)
+                    while (stream.Read(p, sizeof(T)) > 0)
                     {
-                        for (var j = 0; j < sizeOfT; j++)
-                            Assert.AreEqual(*(pdata + counter * sizeOfT + j), *(p + j), $"At idx : {counter}, Byte: {j}");
+                        for (var j = 0; j < sizeof(T); j++)
+                            Assert.AreEqual(*(pdata + counter * sizeof(T) + j), *(p + j), $"At idx : {counter}, Byte: {j}");
                         counter++;
                     }
                 }
@@ -210,13 +213,9 @@ namespace Minotaur.Tests.Streams
             finally
             {
                 handle.Free();
-                allocator.Dispose();
             }
         }
 
-        private static ICodec[] A(params ICodec[] array)
-        {
-            return array;
-        }
+        private static ICodecFullStream[] A(params ICodecFullStream[] array) => array;
     }
 }

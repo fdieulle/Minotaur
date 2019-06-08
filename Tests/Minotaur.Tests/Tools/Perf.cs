@@ -1008,7 +1008,7 @@ namespace Minotaur.Tests.Tools
 
             public override string ToString()
             {
-                return $"Min: {_min}, Mean: {_mean}, Median: {_median}, Max: {_max}, Units: {_units}";
+                return $"Min: {Math.Round(_min, 2):0.00}, Mean: {Math.Round(_mean, 2):0.00}, Median: {Math.Round(_median, 2):0.00}, Max: {Math.Round(_max, 2):0.00}, Units: {_units}";
             }
         }
 

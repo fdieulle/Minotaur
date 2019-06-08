@@ -29,6 +29,17 @@ namespace Minotaur.Tests
             else Assert.AreEqual(value, data, message);
         }
 
+        public static void IsEqualTo<T>(this T[] x, params T[] y)
+        {
+            if (x == null && y == null) return;
+
+            Assert.IsNotNull(x, "x is null");
+            Assert.IsNotNull(y, "y is null");
+
+            for(var i=0; i<x.Length; i++)
+                Assert.AreEqual(x[i], y[i]);
+        }
+
         public static void CheckAndReset(this MemoryStream stream, int position)
         {
             stream.Position.Check(position);

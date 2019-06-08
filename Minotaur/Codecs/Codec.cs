@@ -1,4 +1,6 @@
-﻿#if Debug
+﻿using System;
+
+#if Debug
 using System;
 using System.Text;
 #endif
@@ -624,6 +626,62 @@ namespace Minotaur.Codecs
         }
 
         #endregion
+
+        public static int GetMaxEncodedSizeForMinDelta64(int count) 
+            => MAX_INT64_LENGTH * (count + 1) + sizeof(int);
+
+        public static void EncodeMinDelta64(byte* src, int len, int skip, ref byte* dst)
+        {
+            var start = src;
+            var end = src + len;
+            var next = sizeof(long) + skip;
+
+            var minDeltaTicks = long.MaxValue;
+            var previousTicks = *(long*)src;
+            src += next;
+            while (src < end)
+            {
+                minDeltaTicks = Math.Min(minDeltaTicks, *(long*)src - previousTicks);
+                previousTicks = *(long*)src;
+                src += next;
+            }
+
+            src = start;
+            start = dst;
+            dst += sizeof(int);
+            previousTicks = *(long*)src;
+            EncodeInt64(previousTicks, ref dst);
+            EncodeInt64(minDeltaTicks, ref dst);
+
+            src += next;
+            while (src < end)
+            {
+                EncodeInt64(*(long*)src - previousTicks - minDeltaTicks, ref dst);
+                previousTicks = *(long*)src;
+                src += next;
+            }
+
+            *(int*) start = (int)(dst - start);
+        }
+
+        public static void DecodeMinDelta64(ref byte* src, int skip, byte* dst)
+        {
+            var len = *(int*) src;
+            var end = src + len;
+            src += sizeof(int);
+            var next = sizeof(long) + skip;
+
+            var previousTick = DecodeInt64(ref src);
+            var minDeltaTicks = DecodeInt64(ref src);
+            *(long*)dst = previousTick;
+            dst += next;
+
+            while (src < end)
+            {
+                previousTick = *(long*)dst = previousTick + minDeltaTicks + DecodeInt64(ref src);
+                dst += next;
+            }
+        }
 
 #if Debug
         private static readonly int[] countU64 = new int[9];

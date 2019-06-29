@@ -627,6 +627,8 @@ namespace Minotaur.Codecs
 
         #endregion
 
+        #region MinDelta 64
+
         public static int GetMaxEncodedSizeForMinDelta64(int count) 
             => MAX_INT64_LENGTH * (count + 1) + sizeof(int);
 
@@ -682,6 +684,8 @@ namespace Minotaur.Codecs
                 dst += next;
             }
         }
+
+        #endregion
 
 #if Debug
         private static readonly int[] countU64 = new int[9];

@@ -160,9 +160,9 @@ namespace Minotaur.Tests.Streams
         public void VoidCodecForInt32EntryTest()
             => CheckStream(p => Factory.CreateInt32Chunk(p));
 
-        //[Test]
-        //public void MinDelta32CodecForInt32Test()
-        //    => CheckStream(p => Factory.CreateInt32Chunk(p), new MinDeltaInt32Codec());
+        [Test]
+        public void MinDelta32CodecForInt32Test()
+            => CheckStream(p => Factory.CreateInt32Chunk(p), new MinDeltaInt32Codec());
 
         [Test]
         public void VoidCodecForDoubleEntryTest()

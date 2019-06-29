@@ -55,28 +55,6 @@ namespace Minotaur.Streams
             return length;
         }
 
-        public int Seek(int seek, SeekOrigin origin)
-        {
-            switch (origin)
-            {
-                case SeekOrigin.Begin:
-                    _offset = seek;
-                    break;
-                case SeekOrigin.Current:
-                    _offset += seek;
-                    break;
-                case SeekOrigin.End:
-                    _offset = _end - seek;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(origin));
-            }
-
-            _end = Math.Max(_end, _offset);
-            EnsureCapacity(_end);
-            return seek;
-        }
-
         public void Reset()
         {
             _offset = 0;

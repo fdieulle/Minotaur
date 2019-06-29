@@ -325,11 +325,6 @@ namespace Minotaur.Tests
                 return length;
             }
 
-            public int Seek(int seek, SeekOrigin origin)
-            {
-                throw new NotImplementedException();
-            }
-
             public void Reset()
             {
                 _resetCallCount++;

@@ -116,11 +116,6 @@ namespace Minotaur.Pocs.Streams
             return wrote;
         }
 
-        public int Seek(int seek, SeekOrigin origin)
-        {
-            throw new System.NotImplementedException();
-        }
-
         public void Reset()
         {
             throw new System.NotImplementedException();

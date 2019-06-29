@@ -16,7 +16,7 @@ namespace Minotaur.Tests.Streams
             fixed (byte* p = data1)
                 memory.Write(p, data1.Length);
 
-            memory.Seek(0, SeekOrigin.Begin);
+            memory.Reset();
 
             var data2 = new byte[1024];
             fixed (byte* p = data2)

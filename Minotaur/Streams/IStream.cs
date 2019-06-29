@@ -1,8 +1,8 @@
 ﻿using System;
-using System.IO;
 
 namespace Minotaur.Streams
 {
+    /// <inheritdoc />
     /// <summary>
     /// This interface describe a generic stream.
     /// </summary>
@@ -23,14 +23,6 @@ namespace Minotaur.Streams
         /// <param name="length">Number of bytes to write.</param>
         /// <returns>Returns the number of bytes wrote.</returns>
         int Write(byte* p, int length);
-
-        /// <summary>
-        /// Move the stream cursor.
-        /// </summary>
-        /// <param name="seek">Number of bytes to seek.</param>
-        /// <param name="origin">Where the move take its origin.</param>
-        /// <returns>Returns the number of bytes seek.</returns>
-        int Seek(int seek, SeekOrigin origin);
 
         /// <summary>
         /// Reset the stream.

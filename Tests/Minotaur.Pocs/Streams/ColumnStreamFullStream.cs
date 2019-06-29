@@ -134,7 +134,7 @@ namespace Minotaur.Pocs.Streams
         /// If you write too little bytes you will hurt your performances.
         /// I mean, write data by block is better, but don't worry you can still read entries one by one.
         /// In fact even if you more data than this stream capacity, many blocks of the same capacity will be generated,
-        /// untill all data given has been consumed.
+        /// until all data given has been consumed.
         /// </summary>
         /// <param name="p">Data pointer to encode and write.</param>
         /// <param name="length">Length of data to write.</param>
@@ -157,11 +157,6 @@ namespace Minotaur.Pocs.Streams
             }
 
             return wrote;
-        }
-
-        public int Seek(int seek, SeekOrigin origin)
-        {
-            throw new NotSupportedException();
         }
 
         public void Reset()

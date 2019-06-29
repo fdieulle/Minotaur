@@ -1,11 +1,12 @@
 ﻿namespace Minotaur.Codecs
 {
-    public unsafe interface ICodec
+    public unsafe interface ICodec<T>
+        where T : unmanaged
     {
         int GetMaxEncodedSize(int size);
 
-        int Encode(byte* src, int len, byte* dst);
+        int Encode(T* src, int count, byte* dst);
 
-        void Decode(byte* src, int len, byte* dst);
+        int Decode(byte* src, int len, T* dst);
     }
 }

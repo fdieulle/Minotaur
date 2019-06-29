@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -15,14 +16,15 @@ using MemoryStream = Minotaur.Streams.MemoryStream;
 namespace Minotaur.Benchmarks
 {
     [AllStatisticsColumn]
-    [DisassemblyDiagnoser(printSource: true, recursiveDepth: 5)]
+    //[DisassemblyDiagnoser(printSource: true, recursiveDepth: 5)]
     //[HardwareCounters(HardwareCounter.BranchMispredictions)]
     public unsafe class ColumnStreamBenchmark
     {
         private const int WROTE = 1024 * 5;
         private const int READ = 256;
         private ColumnStreamFullStream<MemoryStream, VoidCodecFullStream> _csFullClassBase;
-        private ColumnStream<VoidCodec> _csFullClass;
+        private ColumnStreamWithRetry<byte, VoidCodec<byte>> _csFullClass;
+        private ColumnStream<byte> _csUnsafeClass;
         private readonly IAllocator _allocator = new DummyUnmanagedAllocator();
         private readonly List<IntPtr> _unmanagedPtr = new List<IntPtr>();
         private readonly List<IStream> _streams = new List<IStream>();
@@ -41,7 +43,8 @@ namespace Minotaur.Benchmarks
             _csFullClassBase = CreateCsb(new VoidCodecFullStream(), data);
             //_csTemplateCodecBase = CreateCsb(new TemplateVoidCodec(), data);
             //_csFullTemplateBase = CreateCstb(new TemplateVoidCodec(), data);
-            _csFullClass = CreateCs(new VoidCodec(), data);
+            _csFullClass = CreateCs<byte, VoidCodec<byte>>(new VoidCodec<byte>(), data);
+            _csUnsafeClass = CreateCsub<byte>(new VoidCodec<byte>(), data);
             //_csTemplateCodec1 = CreateCs(new TemplateVoidCodec(), data);
             //_csFullTemplateCodec = CreateCst(new TemplateVoidCodec(), data);
         }
@@ -92,6 +95,15 @@ namespace Minotaur.Benchmarks
             return read;
         }
 
+        [Benchmark(Description = "UnsafeBuffer")]
+        public int UnsafeBufferClass()
+        {
+            var read = 0;
+            for (var i = 0; i < WROTE; i += READ)
+                read += _csUnsafeClass.Read(_rData, READ);
+            return read;
+        }
+
         //[Benchmark(Description = "Full Template")]
         //public int FullTemplateCodec()
         //{
@@ -125,12 +137,13 @@ namespace Minotaur.Benchmarks
             return stream;
         }
         
-        private ColumnStream<TCodec> CreateCs<TCodec>(TCodec codec, byte[] data)
-            where TCodec : ICodec
+        private unsafe ColumnStreamWithRetry<T, TCodec> CreateCs<T, TCodec>(TCodec codec, byte[] data)
+            where T : unmanaged
+            where TCodec : ICodec<T>
         {
             var memory = new System.IO.MemoryStream();
 
-            var stream = new ColumnStream<TCodec>(memory, codec, 16, 1024);
+            var stream = new ColumnStreamWithRetry<T, TCodec>(memory, codec, 1024);
             stream.WriteAndReset(data, sizeof(byte));
 
             _streams.Add(stream);
@@ -149,6 +162,17 @@ namespace Minotaur.Benchmarks
             stream.WriteAndReset(data, sizeof(byte));
 
             _streams.Add(stream);
+            return stream;
+        }
+
+        private ColumnStream<T> CreateCsub<T>(ICodec<T> codec, byte[] data) where T : unmanaged
+        {
+            var stream = new ColumnStream<T>(
+                new System.IO.MemoryStream(),
+                codec,
+                1024);
+
+            stream.WriteAndReset(data, sizeof(byte));
             return stream;
         }
     }
@@ -418,11 +442,6 @@ namespace Minotaur.Benchmarks
             }
 
             return wrote;
-        }
-
-        public int Seek(int seek, SeekOrigin origin)
-        {
-            throw new NotSupportedException();
         }
 
         public void Reset()

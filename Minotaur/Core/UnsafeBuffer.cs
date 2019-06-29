@@ -13,8 +13,16 @@ namespace Minotaur.Core
 
         public byte* Ptr { get; private set; }
 
-        public UnsafeBuffer(int size) => UpdateSize(size);
+        public UnsafeBuffer(int size)
+        {
+            UpdateSize(size);
+            Reset();
+        }
 
+        public byte* Offset { get; set; }
+
+        public byte* End { get; set; }
+        
         public void UpdateSize(int size)
         {
             if (_handle.IsAllocated)
@@ -24,6 +32,8 @@ namespace Minotaur.Core
             _handle = GCHandle.Alloc(Data, GCHandleType.Pinned);
             Ptr = (byte*)_handle.AddrOfPinnedObject();
         }
+
+        public void Reset() => Offset = End = Ptr;
 
         #region IDisposable
 

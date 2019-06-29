@@ -1,216 +1,161 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Minotaur.Codecs;
 using Minotaur.Core;
 
 namespace Minotaur.Streams
 {
-    [StructLayout(LayoutKind.Explicit)]
-    public struct PayloadHeader
-    {
-        [field: FieldOffset(0)]
-        public int Version { get; set; }
-
-        [field: FieldOffset(4)]
-        public int PayloadLength { get; set; }
-
-        [field: FieldOffset(8)]
-        public int DataLength { get; set; }
-    }
-
     /// <summary>
+    /// Column stream is responsible to write and read columnar data.
+    /// This stream respect a certain block size which is defined by the writer.
+    /// 
+    /// Format details:
+    /// 
     ///   Size    | Purpose
+    /// ----------|-------------------------------
+    /// 4 Bytes   | Payload size in bytes.
+    /// ----------|-------------------------------
+    /// 4 Bytes   | Data count in number of data.
     /// ----------|-------------------------------
     /// 1 Byte    | Version.
     /// ----------|-------------------------------
-    /// 2 Bytes   | Payload length in number of bytes.
-    /// ----------|-------------------------------
-    /// 2 Bytes   | Uncompressed data length in number of bytes.
-    /// ----------|-------------------------------
-    /// Data size | Data
+    /// n Bytes   | Payload data
     /// ----------|-------------------------------
     /// 1 Byte    | Checksum
+    /// 
     /// </summary>
-    public unsafe class ColumnStream<TCodec> : IStream
-        where TCodec : ICodec
+    public unsafe class ColumnStream<T> : IStream
+        where T : unmanaged
     {
-        private const int CURRENT_VERSION = 1;
+        private const byte CURRENT_VERSION = 1;
         private const byte CHECKSUM = 12;
 
         private readonly Stream _underlying;
-        private readonly TCodec _codec;
-        private readonly UnsafeBuffer _dataBuffer;
-        private readonly UnsafeBuffer _payloadBuffer;
+        private readonly ICodec<T> _codec;
+        private readonly UnsafeBuffer _decodedBuffer;
+        private readonly UnsafeBuffer _encodedBuffer;
 
-        private int _position;
-        private int _length;
-        private int _dataCapacity;
-        private int _payloadCapacity;
-
-        public ColumnStream(Stream underlying, TCodec codec, int sizeOfEntry, int capacity = 8192)
+        public ColumnStream(Stream underlying, ICodec<T> codec, int capacity = 8192)
         {
             _underlying = underlying;
             _codec = codec;
-            
-            _dataCapacity = capacity / sizeOfEntry * sizeOfEntry;
-            _payloadCapacity = _codec.GetMaxEncodedSize(_dataCapacity) + sizeof(PayloadHeader) + 1;
 
-            _dataBuffer = new UnsafeBuffer(_dataCapacity);
-            _payloadBuffer = new UnsafeBuffer(_payloadCapacity);
+            _decodedBuffer = new UnsafeBuffer(capacity / sizeof(T) * sizeof(T));
+            _encodedBuffer = new UnsafeBuffer(codec.GetMaxEncodedSize(capacity / sizeof(T)) + sizeof(PayloadHeader) + sizeof(byte));
         }
 
-        #region Overrides of Stream
+        #region Implementation of IStream
 
-        public int Read(byte* p, int count)
+        public int Read(byte* p, int length)
         {
-            var remaining = _length - _position;
-            var totalRead = 0;
-
-            while (count > remaining)
+            var read = 0;
+            while (read < length)
             {
-                //Buffer.MemoryCopy(_dataBuffer, p, count, remaining);
-                Unsafe.CopyBlock(p, _dataBuffer.Ptr, (uint) remaining);
-                p += remaining;
-                totalRead += remaining;
+                // Read the next block from the underlying stream
+                if (_decodedBuffer.Offset >= _decodedBuffer.End)
+                {
+                    _encodedBuffer.Reset();
 
-                if (!TryReadFromUnderlying())
-                    break;
+                    // Read the payload length
+                    if (_underlying.Read(_encodedBuffer.Data, 0, sizeof(PayloadHeader)) != sizeof(PayloadHeader))
+                        return read; // Ends of stream
 
-                count -= remaining;
-                remaining = _length;
+                    var payloadLength = ((PayloadHeader*)_encodedBuffer.Ptr)->PayloadLength;
+                    if (_underlying.Read(_encodedBuffer.Data, 0, payloadLength + sizeof(byte)) != payloadLength + sizeof(byte))
+                        return read; // Ends of stream
+
+                    // Decode data
+                    _decodedBuffer.Reset();
+                    _decodedBuffer.End += _codec.Decode(_encodedBuffer.Ptr, payloadLength, (T*)_decodedBuffer.Ptr) * sizeof(T);
+
+                    // Checksum coherency
+                    if (*(_encodedBuffer.Ptr + payloadLength) != CHECKSUM)
+                        throw new CorruptedDataException("Checksum failed");
+                }
+
+                var bytesToRead = Math.Min(length - read, (int)(_decodedBuffer.End - _decodedBuffer.Offset));
+                Unsafe.CopyBlock(p, _decodedBuffer.Offset, (uint)bytesToRead);
+                read += bytesToRead;
+                p += bytesToRead;
+                _decodedBuffer.Offset += bytesToRead;
+
+#if Debug
+                if((int) (_blockEnd - _offset) <= remainingBytes) 
+                    throw new InvalidOperationException($"The codec {typeof(TCodec)} decoded nothing and the read is fallen in an infinity loop");
+#endif
             }
 
-            if (count <= remaining)
-            {
-                //Buffer.MemoryCopy(_dataBuffer + _position, p, count, count);
-                Unsafe.CopyBlock(p, _dataBuffer.Ptr + _position, (uint) count);
-                _position += count;
-                totalRead += count;
-            }
-
-            return totalRead;
+            return read;
         }
 
-        public int Write(byte* p, int count)
+        public int Write(byte* p, int length)
         {
             var wrote = 0;
 
             do
             {
-                var length = Math.Min(_dataCapacity - _position, count);
-                Unsafe.CopyBlock(_dataBuffer.Ptr, p, (uint)length);
+                var bytesToWrite = Math.Min(
+                    _decodedBuffer.Length - (int)(_decodedBuffer.Offset - _decodedBuffer.Ptr), 
+                    length - wrote);
+                Unsafe.CopyBlock(_decodedBuffer.Offset, p, (uint)bytesToWrite);
 
-                _position += length;
-                p += length;
-                count -= length;
-                wrote += length;
+                wrote += bytesToWrite;
+                _decodedBuffer.Offset += bytesToWrite;
+                p += bytesToWrite;
 
-                if (_dataCapacity - _position == 0)
-                    WriteToUnderlying();
+                // Write the next block to the underlying stream
+                if (_decodedBuffer.Offset >= _decodedBuffer.Ptr + _decodedBuffer.Length)
+                    Write();
+            }
+            while (wrote < length);
 
-            } while (count > 0);
-            
-            _length = _position;
             return wrote;
-        }
-
-        public int Seek(int seek, SeekOrigin origin)
-        {
-            throw new NotImplementedException();
         }
 
         public void Reset()
         {
-            if(_underlying.CanSeek)
-                _underlying.Seek(0, SeekOrigin.Begin); // Todo: It can't work every time
-
-            _position = 0;
-            _length = 0;
+            if (_underlying.CanSeek)
+                _underlying.Seek(0, SeekOrigin.Begin);
+            _decodedBuffer.Reset();
         }
 
         public void Flush()
         {
-            if(_position > 0)
-                WriteToUnderlying();
+            if (_decodedBuffer.Offset > _decodedBuffer.Ptr)
+                Write();
             _underlying.Flush();
         }
 
-        private bool TryReadFromUnderlying()
-        {
-            // Read payload header
-            if (!TryRead(_underlying, _payloadBuffer.Data, 0, sizeof(PayloadHeader)))
-            {
-                _position = _length = 0;
-                return false;
-            }
-
-            var payload = (PayloadHeader*) _payloadBuffer.Ptr;
-
-            // Rescale buffers if necessary
-            if (payload->DataLength > _dataCapacity)
-                _dataBuffer.UpdateSize(_dataCapacity = payload->DataLength);
-            if (payload->PayloadLength > _payloadCapacity)
-                _payloadBuffer.UpdateSize(_payloadCapacity = payload->PayloadLength);
-
-            // Read payload
-            if (!TryRead(_underlying, _payloadBuffer.Data, sizeof(PayloadHeader), payload->PayloadLength + 1))
-            {
-                _position = _length = 0;
-                return false;
-            }
-
-            // Decode payload to the data buffer
-            _codec.Decode(_payloadBuffer.Ptr + sizeof(PayloadHeader), payload->PayloadLength, _dataBuffer.Ptr);
-            _length = payload->DataLength;
-            _position = 0;
-
-            // Validate the checksum
-            if (*(_payloadBuffer.Ptr + sizeof(PayloadHeader) + payload->PayloadLength) != CHECKSUM)
-                throw new CorruptedDataException("Invalid checksum at the end of column block");
-
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool TryRead(Stream reader, byte[] buffer, int offset, int length)
-        {
-            do
-            {
-                var read = reader.Read(buffer, offset, length);
-                if (read <= 0) return false;
-                offset += read;
-                length -= read;
-            } while (length > 0);
-
-            return true;
-        }
-
-        private void WriteToUnderlying()
-        {
-            var wrote = sizeof(PayloadHeader);
-
-            var payload = (PayloadHeader*) _payloadBuffer.Ptr;
-            payload->Version = CURRENT_VERSION;
-            payload->DataLength = _position;
-            payload->PayloadLength = _codec.Encode(_dataBuffer.Ptr, _position, _payloadBuffer.Ptr + wrote);
-            wrote += payload->PayloadLength;
-
-            // Write the checksum
-            *(_payloadBuffer.Ptr + wrote) = CHECKSUM;
-            wrote++;
-
-            _underlying.Write(_payloadBuffer.Data, 0, wrote);
-            _length = _position = 0;
-        }
-
         #endregion
+
+        private void Write()
+        {
+            _encodedBuffer.Reset();
+
+            var header = (PayloadHeader*)_encodedBuffer.Ptr;
+            header->DataLength = (int)(_decodedBuffer.Offset - _decodedBuffer.Ptr) / sizeof(T);
+            header->Version = CURRENT_VERSION;
+
+            header->PayloadLength = _codec.Encode(
+                (T*)_decodedBuffer.Ptr,
+                header->DataLength,
+                _encodedBuffer.Ptr + sizeof(PayloadHeader));
+
+            *(_encodedBuffer.Ptr + sizeof(PayloadHeader) + header->PayloadLength) = CHECKSUM;
+
+            _underlying.Write(_encodedBuffer.Data, 0, header->PayloadLength + sizeof(PayloadHeader) + sizeof(byte));
+
+            _decodedBuffer.Reset();
+        }
 
         #region Implementation of IDisposable
 
         public void Dispose()
         {
+            _encodedBuffer.Reset();
+            _decodedBuffer.Reset();
+            _underlying.Dispose();
         }
 
         #endregion

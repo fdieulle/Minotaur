@@ -2,11 +2,10 @@
 using System.Runtime.InteropServices;
 using Minotaur.Codecs;
 using Minotaur.Core;
-using Minotaur.Native;
 using Minotaur.Pocs.Codecs;
+using Minotaur.Pocs.Streams;
 using Minotaur.Streams;
 using NUnit.Framework;
-using MemoryStream = Minotaur.Streams.MemoryStream;
 
 namespace Minotaur.Tests.Streams
 {
@@ -29,11 +28,11 @@ namespace Minotaur.Tests.Streams
         protected virtual void OnTeardown() { }
 
         protected virtual IStream CreateColumnStream<TEntry>(int bufferSize)
-            where TEntry : unmanaged 
-            => new ColumnStream<VoidCodec>(
-                new System.IO.MemoryStream(), 
-                new VoidCodec(), 
-                sizeof(TEntry), bufferSize);
+            where TEntry : unmanaged
+            => new ColumnStream<TEntry>(
+                new System.IO.MemoryStream(),
+                new VoidCodec<TEntry>(),
+                bufferSize);
 
         [Test]
         public void ReadWriteWorkflowTest()
@@ -51,7 +50,7 @@ namespace Minotaur.Tests.Streams
             writeBuffer.SetAll(2);
             readBuffer.SetAll(0);
 
-            var stream = new ColumnStream<VoidCodec>(ms, new VoidCodec(), 1, bufferSize);
+            var stream = new ColumnStream<byte>(ms, new VoidCodec<byte>(), bufferSize);
 
             // 1. Test write less than buffer
             var write = 100;
@@ -161,6 +160,10 @@ namespace Minotaur.Tests.Streams
         public void VoidCodecForInt32EntryTest()
             => CheckStream(p => Factory.CreateInt32Chunk(p));
 
+        //[Test]
+        //public void MinDelta32CodecForInt32Test()
+        //    => CheckStream(p => Factory.CreateInt32Chunk(p), new MinDeltaInt32Codec());
+
         [Test]
         public void VoidCodecForDoubleEntryTest()
             => CheckStream(p => Factory.CreateDoubleChunk(p));
@@ -177,7 +180,7 @@ namespace Minotaur.Tests.Streams
         public void VoidCodecForStringEntryTest()
             => CheckStream(p => Factory.CreateStringChunk(p));
 
-        private void CheckStream<T>(Func<int, T[]> factory)
+        private void CheckStream<T>(Func<int, T[]> factory, ICodec<T> codec = null)
             where T : unmanaged
         {
             const int bufferLength = 8192;
@@ -188,7 +191,11 @@ namespace Minotaur.Tests.Streams
             var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
             try
             {
-                var stream = CreateColumnStream<T>(bufferLength);
+                var stream = codec == null 
+                    ? CreateColumnStream<T>(bufferLength) 
+                    : new ColumnStreamWithRetry<T, ICodec<T>>(
+                        new System.IO.MemoryStream(),
+                        codec);
 
                 var pdata = (byte*)handle.AddrOfPinnedObject();
 

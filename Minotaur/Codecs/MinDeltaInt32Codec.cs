@@ -3,6 +3,12 @@ using Minotaur.Native;
 
 namespace Minotaur.Codecs
 {
+    /// <summary>
+    /// This codec encode by distinguish ticks and values.
+    /// For both we compute first the delta and track which is the minimum delta.
+    /// After this minimum found we store the the delta between 2 consecutive value minus the minimum.
+    /// The  goal of this compression algorithm is to keep the minimum value and store them with leading zero compression.
+    /// </summary>
     public unsafe class MinDeltaInt32Codec : ICodec<Int32Entry>
     {
         #region Implementation of ICodec2

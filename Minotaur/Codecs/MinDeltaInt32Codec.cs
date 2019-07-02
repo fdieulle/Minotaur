@@ -78,7 +78,7 @@ namespace Minotaur.Codecs
                 dst->ticks = (dst - 1)->ticks + Codec.DecodeInt64(ref src) + minDeltaTicks;
 
                 var delta = Codec.DecodeInt32(ref src, out var isNegative);
-                if(isNegative) dst->value = -((dst - 1)->value + delta + maxNegDeltaValue);
+                if(isNegative) dst->value = (dst - 1)->value - (delta + maxNegDeltaValue);
                 else dst->value = (dst - 1)->value + delta + minPosDeltaValue;
 
                 dst++;

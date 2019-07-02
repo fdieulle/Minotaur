@@ -4,6 +4,7 @@ using System.Linq;
 using System.Management;
 using System.Reflection;
 using BenchmarkDotNet.Running;
+using Minotaur.Benchmarks.Codecs;
 
 namespace Minotaur.Benchmarks
 {
@@ -11,7 +12,9 @@ namespace Minotaur.Benchmarks
     {
         static void Main(string[] args)
         {
-            BenchmarkRunner.Run<ColumnStreamBenchmark>();
+            //BenchmarkRunner.Run<ColumnStreamBenchmark>();
+            //BenchmarkRunner.Run<Int32CodecEncodeDecodeBenchmark>();
+            BenchmarkRunner.Run<Int32CodecDecodeOnlyBenchmark>();
             //foreach (var cacheMemory in GetCacheInfo())
             //    Console.WriteLine(cacheMemory);
             //Console.ReadLine();

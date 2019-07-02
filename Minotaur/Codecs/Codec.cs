@@ -627,66 +627,6 @@ namespace Minotaur.Codecs
 
         #endregion
 
-        #region MinDelta 64
-
-        public static int GetMaxEncodedSizeForMinDelta64(int count) 
-            => MAX_INT64_LENGTH * (count + 1) + sizeof(int);
-
-        public static void EncodeMinDelta64(byte* src, int len, int skip, ref byte* dst)
-        {
-            var start = src;
-            var end = src + len;
-            var next = sizeof(long) + skip;
-
-            var minDeltaTicks = long.MaxValue;
-            var previousTicks = *(long*)src;
-            src += next;
-            while (src < end)
-            {
-                minDeltaTicks = Math.Min(minDeltaTicks, *(long*)src - previousTicks);
-                previousTicks = *(long*)src;
-                src += next;
-            }
-
-            src = start;
-            start = dst;
-            dst += sizeof(int);
-            previousTicks = *(long*)src;
-            EncodeInt64(previousTicks, ref dst);
-            EncodeInt64(minDeltaTicks, ref dst);
-
-            src += next;
-            while (src < end)
-            {
-                EncodeInt64(*(long*)src - previousTicks - minDeltaTicks, ref dst);
-                previousTicks = *(long*)src;
-                src += next;
-            }
-
-            *(int*) start = (int)(dst - start);
-        }
-
-        public static void DecodeMinDelta64(ref byte* src, int skip, byte* dst)
-        {
-            var len = *(int*) src;
-            var end = src + len;
-            src += sizeof(int);
-            var next = sizeof(long) + skip;
-
-            var previousTick = DecodeInt64(ref src);
-            var minDeltaTicks = DecodeInt64(ref src);
-            *(long*)dst = previousTick;
-            dst += next;
-
-            while (src < end)
-            {
-                previousTick = *(long*)dst = previousTick + minDeltaTicks + DecodeInt64(ref src);
-                dst += next;
-            }
-        }
-
-        #endregion
-
 #if Debug
         private static readonly int[] countU64 = new int[9];
         public static void ResetCountersU64()
@@ -753,5 +693,110 @@ namespace Minotaur.Codecs
             Console.WriteLine(sb.ToString());
         }
 #endif
+    }
+
+    public unsafe interface IValueTypeCodec<T> where T : unmanaged
+    {
+        int GetMaxEncodedSize();
+
+        int Encode(T value, ref byte* dst);
+
+        T Decode(ref byte* src);
+
+        T Subtract(T x, T y);
+
+        T Min(T x, T y);
+
+        T Max(T x, T y);
+    }
+
+    public unsafe struct Int32Codec : IValueTypeCodec<int>
+    {
+        private const int MAX_ENCODED_SIZE = 5;
+
+        #region Implementation of IValueTypeCodec<int>
+
+        public int GetMaxEncodedSize() => MAX_ENCODED_SIZE;
+
+        public int Encode(int value, ref byte* dst)
+        {
+            var sign = 0;
+            if (value < 0)
+            {
+                sign = 1;
+                if (value != int.MinValue)
+                    value = -value;
+                else
+                {
+                    *dst++ = (byte)((sign << 7) | (3 << 5));
+                    *dst++ = (byte)((value & 0xff000000) >> 24);
+                    *dst++ = (byte)((value & 0xff0000) >> 16);
+                    *dst++ = (byte)((value & 0xff00) >> 8);
+                    *dst++ = (byte)(value & 0xff);
+
+                    return MAX_ENCODED_SIZE;
+                }
+            }
+
+            if (value < 32) // 5 bits (1 byte >> 3)
+            {
+                *dst++ = (byte)((sign << 7) | value & 0x1f);
+
+                return 1;
+            }
+
+            if (value < 8192) // 13 bits (2 bytes >> 3)
+            {
+                *dst++ = (byte)((sign << 7) | (1 << 5) | ((value & 0x1f00) >> 8));
+                *dst++ = (byte)(value & 0xff);
+
+                return 2;
+            }
+
+            if (value < 2097152) // 21 bits (3 bytes >> 3)
+            {
+                *dst++ = (byte)((sign << 7) | (2 << 5) | ((value & 0x1f0000) >> 16));
+                *dst++ = (byte)((value & 0xff00) >> 8);
+                *dst++ = (byte)(value & 0xff);
+
+                return 3;
+            }
+
+            // 32 bits full 4 bytes size
+            *dst++ = (byte)((sign << 7) | (3 << 5));
+            *dst++ = (byte)((value & 0xff000000) >> 24);
+            *dst++ = (byte)((value & 0xff0000) >> 16);
+            *dst++ = (byte)((value & 0xff00) >> 8);
+            *dst++ = (byte)(value & 0xff);
+
+            return MAX_ENCODED_SIZE;
+        }
+
+        public int Decode(ref byte* src)
+        {
+            var sign = (*src & 0x80) == 0x80 ? -1 : 1;
+            var length = (*src & 0x60) >> 5;
+
+            if (length == 0)
+                return sign * (*src++ & 0x1F);
+
+            if (length == 1)
+                return sign * (((*src++ & 0x1F) << 8) | *src++);
+
+            if (length == 2)
+                return sign * (((*src++ & 0x1F) << 16) | *src++ << 8 | *src++);
+
+            src++;
+            var value = *src++ << 24 | *src++ << 16 | *src++ << 8 | *src++;
+            return value == int.MinValue ? int.MinValue : sign * value;
+        }
+
+        public int Subtract(int x, int y) => x - y;
+
+        public int Min(int x, int y) => Math.Min(x, y);
+
+        public int Max(int x, int y) => Math.Max(x, y);
+
+        #endregion
     }
 }

@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Minotaur.Codecs;
 using Minotaur.Core;
 using Minotaur.Pocs.Codecs;
+using Minotaur.Pocs.Codecs.Int32;
 using Minotaur.Pocs.Streams;
 using Minotaur.Streams;
 using NUnit.Framework;
@@ -163,6 +164,10 @@ namespace Minotaur.Tests.Streams
         [Test]
         public void MinDelta32CodecForInt32Test()
             => CheckStream(p => Factory.CreateInt32Chunk(p), new MinDeltaInt32Codec());
+
+        [Test]
+        public void MinDelta32GenericCodecForInt32Test()
+            => CheckStream(p => Factory.CreateInt32Chunk(p), new MinDeltaInt32GenericCodec());
 
         [Test]
         public void VoidCodecForDoubleEntryTest()

@@ -14,6 +14,14 @@ namespace Minotaur.Tests
             return data;
         }
 
+        public static int[] CreateRandomInt32(int count)
+        {
+            var data = new int[count];
+            for(var i=0; i< data.Length; i++)
+                data[i] = random.Next(int.MinValue, int.MaxValue);
+            return data;
+        }
+
         public static long[] CreateTimelineTicks(int count, double intervalMs = 233)
         {
             var ticks = new long[count];

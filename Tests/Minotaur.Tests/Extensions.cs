@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Minotaur.Core;
 using Minotaur.Cursors;
 using Minotaur.Native;
@@ -218,5 +219,18 @@ namespace Minotaur.Tests
         [DebuggerStepThrough]
         public static IRowRecorder<ITimeSeriesRecorder> AddRow(this ITimeSeriesRecorder recorder, string timestamp)
             => recorder.AddRow(timestamp.ToDateTime());
+
+        public static unsafe void CopyBlock(byte* src, byte* dst, int length, int take = int.MaxValue, int skip = 0)
+        {
+            take = Math.Min(length, take);
+
+            var end = src + length;
+            while (src < end)
+            {
+                Unsafe.CopyBlock(dst, src, (uint)take);
+                src += take + skip;
+                dst += take + skip;
+            }
+        }
     }
 }

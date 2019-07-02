@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 using Minotaur.Codecs;
 using Minotaur.Core;
 using Minotaur.Native;
 using Minotaur.Pocs.Codecs;
+using Minotaur.Pocs.Codecs.Int32;
 using Minotaur.Streams;
 using Minotaur.Tests.Tools;
 using NUnit.Framework;
@@ -187,22 +190,94 @@ namespace Minotaur.Tests.Codecs
             var chunk = factory(count);
             var result = new T[count];
 
-            var size = Codec.GetMaxEncodedSizeForMinDelta64(chunk.Length);
+            var size = CodecExt.GetMaxEncodedSizeForMinDeltaU64(chunk.Length);
             var buffer = new UnsafeBuffer(size);
 
             fixed (T* p = chunk)
             {
                 var dst = buffer.Ptr;
-                Codec.EncodeMinDelta64((byte*)p, count * sizeof(T), skip, ref dst);
+                CodecExt.EncodeMinDeltaU64((byte*)p, count * sizeof(T), skip, ref dst);
             }
 
             fixed (T* p = result)
             {
                 var src = buffer.Ptr;
-                Codec.DecodeMinDelta64(ref src, skip, (byte*)p);
+                CodecExt.DecodeMinDeltaU64(ref src, skip, (byte*)p);
             }
 
             chunk.IsEqualTo(result);
+        }
+
+        [TestCase(10)]
+        [TestCase(100)]
+        [TestCase(1000)]
+        [TestCase(10000)]
+        public void EncodeDecodeMinDelta32BlockNoSkip(int count)
+            => TestEncodeDecodeMinDelta32(count, Factory.CreateRandomInt32, 0, 0);
+
+        [TestCase(5)]
+        [TestCase(100)]
+        [TestCase(1000)]
+        [TestCase(10000)]
+        public void EncodeDecodeMinDelta32BlockForInt32Chunk(int count)
+            => TestEncodeDecodeMinDelta32(count, c => Factory.CreateInt32Chunk(c), sizeof(long), sizeof(long));
+
+        private void TestEncodeDecodeMinDelta32<T>(int count, Func<int, T[]> factory, int shift, int skip)
+            where T : unmanaged
+        {
+            var chunk = factory(count);
+            var result = new T[count];
+
+            var size = CodecExt.GetMaxEncodedSizeForMinDelta32(chunk.Length);
+            var buffer = new UnsafeBuffer(size);
+
+            // Copy partial data
+            if (skip > 0)
+            {
+                fixed (T* src = chunk)
+                fixed (T* dst = result)
+                {
+                    Extensions.CopyBlock((byte*)src, (byte*)dst, count * sizeof(T), skip, sizeof(T) - skip);
+                }
+            }
+
+            fixed (T* p = chunk)
+            {
+                var dst = buffer.Ptr;
+                CodecExt.EncodeMinDelta32((byte*)p + shift, count * sizeof(T) - shift, skip, ref dst);
+            }
+
+            fixed (T* p = result)
+            {
+                var src = buffer.Ptr;
+                CodecExt.DecodeMinDelta32(ref src, skip, (byte*)p + shift);
+            }
+
+            chunk.IsEqualTo(result);
+        }
+
+        [Test]
+        public void Test()
+        {
+            var sb = new StringBuilder();
+
+            var val = 1;
+            Write(sb, (byte*)(&val), sizeof(int));
+            val = 1 << 8;
+            Write(sb, (byte*)(&val), sizeof(int));
+            val = 1 << 16;
+            Write(sb, (byte*)(&val), sizeof(int));
+            val = 1 << 24;
+            Write(sb, (byte*)(&val), sizeof(int));
+
+            Console.Write(sb);
+        }
+
+        private static void Write(StringBuilder sb, byte* p, int size)
+        {
+            for (var i = 0; i < sizeof(int); i++)
+                sb.AppendFormat("{0:000}-", *(p + i));
+            sb.AppendLine();
         }
 
         [Test]

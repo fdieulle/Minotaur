@@ -37,7 +37,7 @@ namespace Minotaur.Tests
             Assert.IsNotNull(y, "y is null");
 
             for(var i=0; i<x.Length; i++)
-                Assert.AreEqual(x[i], y[i]);
+                Assert.AreEqual(x[i], y[i], "at index {0}", i);
         }
 
         public static void CheckAndReset(this MemoryStream stream, int position)

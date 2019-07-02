@@ -21,6 +21,8 @@ namespace Minotaur.Codecs
 
         public int Encode(Int32Entry* src, int count, byte* dst)
         {
+            if (count <= 0) return count;
+
             var minDeltaTicks = long.MaxValue;
             var maxNegDeltaValue = int.MinValue;
             var minPosDeltaValue = int.MaxValue;
@@ -60,6 +62,8 @@ namespace Minotaur.Codecs
 
         public int Decode(byte* src, int len, Int32Entry* dst)
         {
+            if (len <= 0) return len;
+
             var end = src + len;
 
             // Decodes header

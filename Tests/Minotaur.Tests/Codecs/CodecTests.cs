@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using Minotaur.Codecs;
@@ -8,7 +7,6 @@ using Minotaur.Core;
 using Minotaur.Native;
 using Minotaur.Pocs.Codecs;
 using Minotaur.Pocs.Codecs.Int32;
-using Minotaur.Streams;
 using Minotaur.Tests.Tools;
 using NUnit.Framework;
 
@@ -344,7 +342,7 @@ namespace Minotaur.Tests.Codecs
             }
         }
 
-        private static unsafe void CheckCodec<T>(ICodecFullStream codec, 
+        private static void CheckCodec<T>(ICodecFullStream codec, 
             Func<int, T[]> factory, 
             int sizeOfData,
             int bufferLength = 8192,
@@ -408,6 +406,67 @@ namespace Minotaur.Tests.Codecs
                     handle.Free();
                 }
             }
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(1024)]
+        [TestCase(1024 * 2)]
+        [TestCase(1024 * 2 * 2)]
+        [TestCase(1024 * 2 * 2 * 2)]
+        public void VoidCodecTest(int count)
+        {
+            CheckCodec(new VoidCodec<Int32Entry>(), count);
+            CheckCodec(new VoidCodec<FloatEntry>(), count);
+            CheckCodec(new VoidCodec<Int64Entry>(), count);
+            CheckCodec(new VoidCodec<DoubleEntry>(), count);
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(1024)]
+        [TestCase(1024 * 2)]
+        [TestCase(1024 * 2 * 2)]
+        [TestCase(1024 * 2 * 2 * 2)]
+        public void Lz4CodecTest(int count)
+        {
+            CheckCodec(new Lz4Codec<Int32Entry>(), count);
+            CheckCodec(new Lz4Codec<FloatEntry>(), count);
+            CheckCodec(new Lz4Codec<Int64Entry>(), count);
+            CheckCodec(new Lz4Codec<DoubleEntry>(), count);
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(1024)]
+        [TestCase(1024 * 2)]
+        [TestCase(1024 * 2 * 2)]
+        [TestCase(1024 * 2 * 2 * 2)]
+        public void MinDeltaInt32CodecTest(int count)
+        {
+            CheckCodec(new MinDeltaInt32Codec(), count);
+        }
+
+        private static void CheckCodec<T>(ICodec<T> codec, int count) 
+            where T : unmanaged
+        {
+            var data = Factory.CreateRandomBytes(count * sizeof(T));
+            var encoded = new UnsafeBuffer(codec.GetMaxEncodedSize(data.Length));
+            var decoded = new UnsafeBuffer(data.Length);
+
+            int length;
+            fixed(byte* p = data)
+                length = codec.Encode((T*) p, count, encoded.Ptr);
+            var result = codec.Decode(encoded.Ptr, length, (T*) decoded.Ptr);
+
+            Assert.AreEqual(count, result, "Mismatch number of decoded data");
+            data.Check(decoded.Data);
+
+            decoded.Dispose();
+            encoded.Dispose();
         }
     }
 }

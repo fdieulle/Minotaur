@@ -16,7 +16,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="K4os.Compression.LZ4" Version="1.1.1" />
+    <PackageReference Include="K4os.Compression.LZ4" Version="1.1.10" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.5.2" />
   </ItemGroup>
 

@@ -113,7 +113,7 @@ namespace Minotaur.Tests.Codecs
             }
 
             var buffer = stackalloc byte[5];
-            for (var i = 63; i < values.Length; i++)
+            for (var i = 0; i < values.Length; i++)
             {
                 var p = buffer;
                 Codec.EncodeInt32(values[i], ref p);
@@ -138,7 +138,7 @@ namespace Minotaur.Tests.Codecs
             }
 
             var buffer = stackalloc byte[5];
-            for (var i = 63; i < values.Length; i++)
+            for (var i = 0; i < values.Length; i++)
             {
                 var p = buffer;
                 Codec.EncodeInt32(true, values[i], ref p);
@@ -149,13 +149,50 @@ namespace Minotaur.Tests.Codecs
                 Assert.IsTrue(flag);
             }
 
-            for (var i = 63; i < values.Length; i++)
+            for (var i = 0; i < values.Length; i++)
             {
                 var p = buffer;
                 Codec.EncodeInt32(false, values[i], ref p);
 
                 p = buffer;
                 var value = Codec.DecodeInt32(ref p, out var flag);
+                Assert.AreEqual(values[i], value, "At idx: " + i);
+                Assert.IsFalse(flag);
+            }
+        }
+
+        [Test]
+        public void TestEncodeDecodeFlaggedInt64()
+        {
+            var values = new long[64 * 4];
+            for (var i = 1; i < 64; i++)
+            {
+                var value = (ulong)Math.Pow(2, i);
+                values[i * 4] = (long)value - 1;
+                values[i * 4 + 1] = (long)value;
+                values[i * 4 + 2] = -values[i * 4];
+                values[i * 4 + 3] = -values[i * 4 + 1];
+            }
+
+            var buffer = stackalloc byte[5];
+            for (var i = 0; i < values.Length; i++)
+            {
+                var p = buffer;
+                Codec.EncodeInt64(true, values[i], ref p);
+
+                p = buffer;
+                var value = Codec.DecodeInt64(ref p, out var flag);
+                Assert.AreEqual(values[i], value, "At idx: " + i);
+                Assert.IsTrue(flag);
+            }
+
+            for (var i = 0; i < values.Length; i++)
+            {
+                var p = buffer;
+                Codec.EncodeInt64(false, values[i], ref p);
+
+                p = buffer;
+                var value = Codec.DecodeInt64(ref p, out var flag);
                 Assert.AreEqual(values[i], value, "At idx: " + i);
                 Assert.IsFalse(flag);
             }
@@ -445,9 +482,10 @@ namespace Minotaur.Tests.Codecs
         [TestCase(1024 * 2)]
         [TestCase(1024 * 2 * 2)]
         [TestCase(1024 * 2 * 2 * 2)]
-        public void MinDeltaInt32CodecTest(int count)
+        public void MinDeltaIntCodecTest(int count)
         {
             CheckCodec(new MinDeltaInt32Codec(), count);
+            CheckCodec(new MinDeltaInt64Codec(), count);
         }
 
         private static void CheckCodec<T>(ICodec<T> codec, int count) 

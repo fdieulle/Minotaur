@@ -349,6 +349,175 @@ namespace Minotaur.Codecs
             }
         }
 
+        /// <summary>
+        ///
+        ///    Bits  | Description
+        /// ---------|------------------------
+        ///     1    | Flag value
+        /// ---------|------------------------
+        ///     2    | Sign value
+        /// ---------|------------------------
+        /// [ 3;  5] | Length of encoded value
+        /// ---------|------------------------
+        /// [ 6; 72] | Encoded value. The right bound depends of the length
+        /// 
+        /// </summary>
+        /// <param name="flag"></param>
+        /// <param name="value"></param>
+        /// <param name="pTo"></param>
+        /// <returns></returns>
+        public static int EncodeInt64(bool flag, long value, ref byte* pTo)
+        {
+            var f = flag ? 1 : 0;
+            var sign = 0;
+            var uvalue = (ulong)value;
+            if (value < 0)
+            {
+                sign = 1;
+                if (value != long.MinValue)
+                    uvalue = (ulong)-value;
+                else
+                {
+                    *pTo++ = (byte)((f << 7) | (sign << 6) | (7 << 3));
+                    *(long*) pTo = value;
+                    pTo += sizeof(long);
+#if Debug
+                    count32[4]++;
+#endif
+                    return MAX_INT64_LENGTH;
+                }
+            }
+
+            if (uvalue < 8UL) // 3 bits to encode
+            {
+                *pTo++ = (byte)((f << 7) | (sign << 6) | (byte)(uvalue & 0x7));
+#if Debug
+                count64[0]++;
+#endif
+                return 1;
+            }
+            if (uvalue < 2048UL) // 11 bits to encode
+            {
+                *pTo++ = (byte)((f << 7) | (sign << 6) | (1 << 3) | (byte)((uvalue & 0x700) >> 8));
+                *pTo++ = (byte)(uvalue & 0xff);
+#if Debug
+                count64[1]++;
+#endif
+                return 2;
+            }
+            if (uvalue < 524287UL) // 19 bits to encode
+            {
+                *pTo++ = (byte)((f << 7) | (sign << 6) | (2 << 3) | (byte)((uvalue & 0x70000) >> 16));
+                *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+                *pTo++ = (byte)(uvalue & 0xff);
+#if Debug
+                count64[2]++;
+#endif
+                return 3;
+            }
+            if (uvalue < 134217728UL) // 27 bits to encode
+            {
+                *pTo++ = (byte)((f << 7) | (sign << 6) | (3 << 3) | (byte)((uvalue & 0x7000000) >> 24));
+                *pTo++ = (byte)((uvalue & 0xff0000) >> 16);
+                *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+                *pTo++ = (byte)(uvalue & 0xff);
+#if Debug
+                count64[3]++;
+#endif
+                return 4;
+            }
+            if (uvalue < 34359738368UL) // 31 bits to encode
+            {
+                *pTo++ = (byte)((f << 7) | (sign << 6) | (4 << 3) | (byte)((uvalue & 0x700000000) >> 32));
+                *pTo++ = (byte)((uvalue & 0xff000000) >> 24);
+                *pTo++ = (byte)((uvalue & 0xff0000) >> 16);
+                *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+                *pTo++ = (byte)(uvalue & 0xff);
+#if Debug
+                count64[4]++;
+#endif
+                return 5;
+            }
+            if (uvalue < 8796093022207UL) // 39 bits to encode
+            {
+                *pTo++ = (byte)((f << 7) | (sign << 6) | (5 << 3) | (byte)((uvalue & 0x70000000000) >> 40));
+                *pTo++ = (byte)((uvalue & 0xff00000000) >> 32);
+                *pTo++ = (byte)((uvalue & 0xff000000) >> 24);
+                *pTo++ = (byte)((uvalue & 0xff0000) >> 16);
+                *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+                *pTo++ = (byte)(uvalue & 0xff);
+#if Debug
+                count64[5]++;
+#endif
+                return 6;
+            }
+            if (uvalue < 2251799813685247UL) // 47 bits to encode
+            {
+                *pTo++ = (byte)((f << 7) | (sign << 6) | (6 << 3) | (byte)((uvalue & 0x7000000000000) >> 48));
+                *pTo++ = (byte)((uvalue & 0xff0000000000) >> 40);
+                *pTo++ = (byte)((uvalue & 0xff00000000) >> 32);
+                *pTo++ = (byte)((uvalue & 0xff000000) >> 24);
+                *pTo++ = (byte)((uvalue & 0xff0000) >> 16);
+                *pTo++ = (byte)((uvalue & 0xff00) >> 8);
+                *pTo++ = (byte)(uvalue & 0xff);
+#if Debug
+                count64[6]++;
+#endif
+                return 7;
+            }
+            
+            // 64 bits full 9 bytes size
+            *pTo++ = (byte)((f << 7) | (sign << 6) | (7 << 3));
+            *(long*) pTo = value;
+            pTo += sizeof(long);
+#if Debug
+            count64[9]++;
+#endif
+            return MAX_INT64_LENGTH;
+        }
+
+        public static long DecodeInt64(ref byte* pFrom, out bool flag)
+        {
+            flag = (*pFrom & 0x80) == 0x80;
+            var sign = (*pFrom & 0x40) == 0x40 ? -1 : 1;
+            var length = (*pFrom & 0x38) >> 3;
+
+            switch (length)
+            {
+                case 0:
+                    return sign * (*pFrom++ & 0x7);
+                case 1:
+                    return sign * (((*pFrom++ & 0x7) << 8) | *pFrom++);
+                case 2:
+                    return sign * (((*pFrom++ & 0x7) << 16) | *pFrom++ << 8 | *pFrom++);
+                case 3:
+                    return sign * (((*pFrom++ & 0x7) << 24) | *pFrom++ << 16 | *pFrom++ << 8 | *pFrom++);
+                case 4:
+                {
+                    var i1 = *pFrom++ & 0x7;
+                    var i2 = (*pFrom++ << 24) | (*pFrom++ << 16) | (*pFrom++ << 8) | *pFrom++;
+                    return sign * (long)(((ulong)i1 << 32) | (uint)i2);
+                }
+                case 5:
+                {
+                    var i1 = ((*pFrom++ & 0x7) << 8) | *pFrom++;
+                    var i2 = (*pFrom++ << 24) | (*pFrom++ << 16) | (*pFrom++ << 8) | *pFrom++;
+                    return sign * (long)(((ulong)i1 << 32) | (uint)i2);
+                }
+                case 6:
+                {
+                    var i1 = ((*pFrom++ & 0x7) << 16) | (*pFrom++ << 8) | *pFrom++;
+                    var i2 = (*pFrom++ << 24) | (*pFrom++ << 16) | (*pFrom++ << 8) | *pFrom++;
+                    return sign * (long)(((ulong)i1 << 32) | (uint)i2);
+                }
+                default:
+                    pFrom++;
+                    var value = *(long*) pFrom;
+                    pFrom += sizeof(long);
+                    return value;
+            }
+        }
+
         #endregion
 
         #region UInt32
@@ -553,7 +722,7 @@ namespace Minotaur.Codecs
 #if Debug
                 count32[0]++;
 #endif
-                return 1;
+                return 0;
             }
             if (value < 4096) // 12 bits (2 bytes >> 4)
             {
@@ -562,7 +731,7 @@ namespace Minotaur.Codecs
 #if Debug
                 count32[1]++;
 #endif
-                return 2;
+                return 1;
             }
             if (value < 1048576) // 20 bits (3 bytes >> 4)
             {
@@ -570,7 +739,7 @@ namespace Minotaur.Codecs
                 *pTo++ = (byte)((value & 0xff00) >> 8);
                 *pTo++ = (byte)(value & 0xff);
 #if Debug
-                count32[3]++;
+                count32[2]++;
 #endif
                 return 2;
             }
@@ -593,14 +762,15 @@ namespace Minotaur.Codecs
             var sign = (*pFrom & 0x40) == 0x40 ? -1 : 1;
             var length = (*pFrom & 0x30) >> 4;
 
-            if (length == 0)
-                return sign * (*pFrom++ & 0xf);
-
-            if (length == 1)
-                return sign * (((*pFrom++ & 0xF) << 8) | *pFrom++);
-
-            if (length == 2)
-                return sign * (((*pFrom++ & 0xF) << 16) | *pFrom++ << 8 | *pFrom++);
+            switch (length)
+            {
+                case 0:
+                    return sign * (*pFrom++ & 0xf);
+                case 1:
+                    return sign * (((*pFrom++ & 0xF) << 8) | *pFrom++);
+                case 2:
+                    return sign * (((*pFrom++ & 0xF) << 16) | *pFrom++ << 8 | *pFrom++);
+            }
 
             pFrom++;
             var value = *pFrom++ << 24 | *pFrom++ << 16 | *pFrom++ << 8 | *pFrom++;

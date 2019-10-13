@@ -47,8 +47,8 @@ namespace Minotaur.Pocs.Streams
     /// </summary>
     /// <typeparam name="TStream"></typeparam>
     /// <typeparam name="TCodec"></typeparam>
-    public unsafe class ColumnStream3<TStream, TCodec> : IStream
-        where TStream : IStream
+    public unsafe class ColumnStream3<TStream, TCodec> : IColumnStream
+        where TStream : IColumnStream
         where TCodec : ICodecFullStream
     {
         private const int VERSION_SIZE = sizeof(byte);

@@ -8,7 +8,7 @@ namespace Minotaur.Tests.Streams.Pocs
     [TestFixture]
     public class ColumnStreamWithRetryTests : ColumnStreamTests
     {
-        protected override IStream CreateColumnStream<TEntry>(int bufferSize)
+        protected override IColumnStream CreateColumnStream<TEntry>(int bufferSize)
             => new ColumnStreamWithRetry<TEntry, VoidCodec<TEntry>>(
                 new System.IO.MemoryStream(),
                 new VoidCodec<TEntry>(),

@@ -8,7 +8,6 @@ using Minotaur.Pocs.Codecs;
 using Minotaur.Pocs.Streams;
 using Minotaur.Streams;
 using NUnit.Framework;
-using MemoryStream = Minotaur.Streams.MemoryStream;
 
 namespace Minotaur.Tests.Cursors
 {
@@ -82,21 +81,21 @@ namespace Minotaur.Tests.Cursors
         private static IColumnCursor<T> CreateCursor<TEntry, T>(TEntry[] chunk)
             where TEntry : unmanaged, IFieldEntry<T>
         {
-            var memory = new MemoryStream(chunk.Length * sizeof(TEntry));
+            var memory = new ColumnMemoryStream(chunk.Length * sizeof(TEntry));
             memory.WriteAndReset(chunk, sizeof(TEntry));
 
-            return new ColumnCursor<TEntry, T, IStream>(new DummyPinnedAllocator(), memory);
+            return new ColumnCursor<TEntry, T, ColumnMemoryStream>(new DummyPinnedAllocator(), memory);
         }
 
         public static IColumnCursor<T> CreateCursor<TEntry, T>(TEntry[] chunk, ICodecFullStream codec)
             where TEntry : unmanaged, IFieldEntry<T>
         {
             var allocator = new DummyPinnedAllocator();
-            var columnStream = new ColumnStreamFullStream<MemoryStream, ICodecFullStream>(
-                new MemoryStream(), codec, allocator, 1024);
+            var columnStream = new ColumnStreamFullStream<ColumnMemoryStream, ICodecFullStream>(
+                new ColumnMemoryStream(), codec, allocator, 1024);
             columnStream.WriteAndReset(chunk, Natives.SizeOfEntry<TEntry>());
 
-            return new ColumnCursor<TEntry, T, IStream>(allocator, columnStream);
+            return new ColumnCursor<TEntry, T, ColumnStreamFullStream<ColumnMemoryStream, ICodecFullStream>>(allocator, columnStream);
         }
 
         protected static void TestFloatEntryCursor(Func<FloatEntry[], IColumnCursor<float>> factory)

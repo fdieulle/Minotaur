@@ -33,11 +33,12 @@ namespace Minotaur.Tests
                 longColumn, floatColumn, doubleColumn
             };
 
-            var mockStreamFactory = Substitute.For<IStreamFactory<Win32>>();
+            var mockColumnFactory = Substitute.For<IColumnFactory>();
+            var mockStreamFactory = Substitute.For<IStreamFactory<IStream>>();
             var streams = columnNames.ToDictionary(p => p, p => new MockStream());
             foreach (var pair in streams)
             {
-                mockStreamFactory.Create(Arg.Is<FileMetaData>(p => p.Column == pair.Key))
+                mockColumnFactory.CreateStream(Arg.Is<ColumnInfo>(p => p.Name == pair.Key), Arg.Any<IStream>())
                     .Returns(pair.Value);
             }
 
@@ -45,7 +46,8 @@ namespace Minotaur.Tests
             mockFilePahtProvider.GetFilePath(Arg.Is<string>(p => p == symbol), Arg.Any<string>(), Arg.Any<DateTime>())
                 .Returns(p => $"{p.ArgAt<string>(0)}_{p.ArgAt<string>(1)}_{p.ArgAt<DateTime>(2):yyyy-MM-dd_HH:mm:ss.fff}.min");
 
-            var recorder = new TimeSeriesRecorder<Win32>(symbol, mockStreamFactory, mockFilePahtProvider);
+            var recorder = new TimeSeriesRecorder<IStream>(
+                symbol, mockColumnFactory, mockStreamFactory, mockFilePahtProvider);
 
             var now = "08:00:00";
 
@@ -59,15 +61,21 @@ namespace Minotaur.Tests
 
             foreach (var pair in streams)
             {
-                mockStreamFactory.Received(1).Create(Arg.Is<FileMetaData>(p =>
-                    p.Column == pair.Key &&
-                    p.Symbol == symbol &&
-                    p.Start == now.ToDateTime() && 
-                    pair.Key.StartsWith(p.Type.ToString()) &&
-                    p.FilePath == mockFilePahtProvider.GetFilePath(symbol, pair.Key, p.Start)));
+                var timestamp = now.ToDateTime();
+                mockFilePahtProvider.Received(1).GetFilePath(
+                    Arg.Is<string>(i => i == symbol),
+                    Arg.Is<string>(i => i == pair.Key),
+                    Arg.Is<DateTime>(i => i == timestamp));
+
+                mockStreamFactory.Received(1).CreateWriter(Arg.Is<string>(i =>
+                    i == mockFilePahtProvider.GetFilePath(symbol, pair.Key, timestamp)));
+
+                mockColumnFactory.Received(1).CreateStream(Arg.Is<ColumnInfo>(p => p.Name == pair.Key), Arg.Any<IStream>());
                 pair.Value.CheckCallsThenClear();
             }
+            mockFilePahtProvider.ClearReceivedCalls();
             mockStreamFactory.ClearReceivedCalls();
+            mockColumnFactory.ClearReceivedCalls();
 
             streams[intColumn1].CheckData(E(now, 1));
             streams[intColumn2].CheckData(E(now, 2));
@@ -86,10 +94,14 @@ namespace Minotaur.Tests
 
             foreach (var pair in streams)
             {
-                mockStreamFactory.DidNotReceive().Create(Arg.Any<FileMetaData>());
+                mockFilePahtProvider.DidNotReceive().GetFilePath(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime>());
+                mockStreamFactory.DidNotReceive().CreateWriter(Arg.Any<string>());
+                mockColumnFactory.DidNotReceive().CreateStream(Arg.Any<ColumnInfo>(), Arg.Any<IStream>());
                 pair.Value.CheckCallsThenClear();
             }
+            mockFilePahtProvider.ClearReceivedCalls();
             mockStreamFactory.ClearReceivedCalls();
+            mockColumnFactory.ClearReceivedCalls();
 
             streams[intColumn1].CheckData(E(now, 10));
             streams[intColumn2].CheckNoData();
@@ -107,10 +119,14 @@ namespace Minotaur.Tests
 
             foreach (var pair in streams)
             {
-                mockStreamFactory.DidNotReceive().Create(Arg.Any<FileMetaData>());
+                mockFilePahtProvider.DidNotReceive().GetFilePath(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime>());
+                mockStreamFactory.DidNotReceive().CreateWriter(Arg.Any<string>());
+                mockColumnFactory.DidNotReceive().CreateStream(Arg.Any<ColumnInfo>(), Arg.Any<IStream>());
                 pair.Value.CheckCallsThenClear();
             }
+            mockFilePahtProvider.ClearReceivedCalls();
             mockStreamFactory.ClearReceivedCalls();
+            mockColumnFactory.ClearReceivedCalls();
 
             streams[intColumn1].CheckData(E(now, 11));
             streams[intColumn2].CheckData(E(now, 21));
@@ -128,10 +144,14 @@ namespace Minotaur.Tests
 
             foreach (var pair in streams)
             {
-                mockStreamFactory.DidNotReceive().Create(Arg.Any<FileMetaData>());
+                mockFilePahtProvider.DidNotReceive().GetFilePath(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime>());
+                mockStreamFactory.DidNotReceive().CreateWriter(Arg.Any<string>());
+                mockColumnFactory.DidNotReceive().CreateStream(Arg.Any<ColumnInfo>(), Arg.Any<IStream>());
                 pair.Value.CheckCallsThenClear();
             }
+            mockFilePahtProvider.ClearReceivedCalls();
             mockStreamFactory.ClearReceivedCalls();
+            mockColumnFactory.ClearReceivedCalls();
 
             streams[intColumn1].CheckData(E(now, 12), E(now, 13), E(now, 14));
             streams[intColumn2].CheckNoData();
@@ -157,16 +177,21 @@ namespace Minotaur.Tests
             const string symbol = "Symbol";
             const string column = "Column";
 
-            var mockStreamFactory = Substitute.For<IStreamFactory<Win32>>();
+            var mockColumnFactory = Substitute.For<IColumnFactory>();
             var mockStream1 = new MockStream(3);
-            mockStreamFactory.Create(Arg.Any<FileMetaData>())
+            mockColumnFactory.CreateStream(Arg.Any<ColumnInfo>(), Arg.Any<IStream>())
                 .Returns(mockStream1);
 
-            var mockFilePahtProvider = Substitute.For<IFilePathProvider>();
-            mockFilePahtProvider.GetFilePath(Arg.Is<string>(p => p == symbol), Arg.Any<string>(), Arg.Any<DateTime>())
+            var mockStreamFactory = Substitute.For<IStreamFactory<IStream>>();
+            var mockFilePathProvider = Substitute.For<IFilePathProvider>();
+            mockFilePathProvider.GetFilePath(Arg.Is<string>(p => p == symbol), Arg.Any<string>(), Arg.Any<DateTime>())
                 .Returns(p => $"{p.ArgAt<string>(0)}_{p.ArgAt<string>(1)}_{p.ArgAt<DateTime>(2):yyyy-MM-dd_HH:mm:ss.fff}.min");
 
-            var recorder = new TimeSeriesRecorder<Win32>(symbol, mockStreamFactory, mockFilePahtProvider);
+            var recorder = new TimeSeriesRecorder<IStream>(
+                symbol, 
+                mockColumnFactory, 
+                mockStreamFactory,
+                mockFilePathProvider);
 
             var now = "08:00:00";
 
@@ -174,17 +199,23 @@ namespace Minotaur.Tests
                 .Record(column, 1)
                 .Record(column, 2);
 
-            mockStreamFactory.Received(1).Create(Arg.Is<FileMetaData>(p =>
-                p.Column == column &&
-                p.Symbol == symbol &&
-                p.Start == now.ToDateTime() &&
-                p.Type == FieldType.Int32 &&
-                p.FilePath == mockFilePahtProvider.GetFilePath(symbol, column, p.Start)));
+            mockFilePathProvider.Received(1).GetFilePath(
+                Arg.Is<string>(i => i == symbol),
+                Arg.Is<string>(i => i == column),
+                Arg.Is<DateTime>(i => i == now.ToDateTime()));
+
+            mockStreamFactory.Received(1).CreateWriter(Arg.Is<string>(i =>
+                i == mockFilePathProvider.GetFilePath(symbol, column, now.ToDateTime())));
+
+            mockColumnFactory.Received(1).CreateStream(Arg.Is<ColumnInfo>(p => p.Name == column && p.Type == FieldType.Int32), Arg.Any<IStream>());
+
+            mockFilePathProvider.ClearReceivedCalls();
             mockStreamFactory.ClearReceivedCalls();
+            mockColumnFactory.ClearReceivedCalls();
             mockStream1.CheckCallsThenClear();
 
             var mockStream2 = new MockStream(3);
-            mockStreamFactory.Create(Arg.Any<FileMetaData>())
+            mockColumnFactory.CreateStream(Arg.Any<ColumnInfo>(), Arg.Any<IStream>())
                 .Returns(mockStream2);
 
             now = "08:00:01";
@@ -194,13 +225,19 @@ namespace Minotaur.Tests
                 .Record(column, 4)
                 .Record(column, 5);
 
-            mockStreamFactory.Received(1).Create(Arg.Is<FileMetaData>(p =>
-                p.Column == column &&
-                p.Symbol == symbol &&
-                p.Start == now.ToDateTime() &&
-                p.Type == FieldType.Int32 &&
-                p.FilePath == mockFilePahtProvider.GetFilePath(symbol, column, p.Start)));
+            mockFilePathProvider.Received(1).GetFilePath(
+                Arg.Is<string>(i => i == symbol),
+                Arg.Is<string>(i => i == column),
+                Arg.Is<DateTime>(i => i == now.ToDateTime()));
+
+            mockStreamFactory.Received(1).CreateWriter(Arg.Is<string>(i =>
+                i == mockFilePathProvider.GetFilePath(symbol, column, now.ToDateTime())));
+
+            mockColumnFactory.Received(1).CreateStream(Arg.Is<ColumnInfo>(p => p.Name == column && p.Type == FieldType.Int32), Arg.Any<IStream>());
+
+            mockFilePathProvider.ClearReceivedCalls();
             mockStreamFactory.ClearReceivedCalls();
+            mockColumnFactory.ClearReceivedCalls();
             mockStream1.CheckCallsThenClear(1);
             mockStream2.CheckCallsThenClear();
 
@@ -258,7 +295,7 @@ namespace Minotaur.Tests
             };
         }
 
-        private class MockStream : IStream
+        private class MockStream : IColumnStream
         {
             private readonly int _maxCount;
             private readonly Queue<byte[]> _data = new Queue<byte[]>();

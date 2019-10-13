@@ -1,6 +1,6 @@
 ﻿using System.IO;
+using Minotaur.Streams;
 using NUnit.Framework;
-using MemoryStream = Minotaur.Streams.MemoryStream;
 
 namespace Minotaur.Tests.Streams
 {
@@ -12,7 +12,7 @@ namespace Minotaur.Tests.Streams
         {
             var data1 = Factory.CreateRandomBytes(1024 * 3 + 500);
 
-            var memory = new MemoryStream(1024);
+            var memory = new ColumnMemoryStream(1024);
             fixed (byte* p = data1)
                 memory.Write(p, data1.Length);
 

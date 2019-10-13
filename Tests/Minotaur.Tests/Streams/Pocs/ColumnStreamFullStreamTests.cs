@@ -26,9 +26,9 @@ namespace Minotaur.Tests.Streams.Pocs
 
         #endregion
 
-        protected override IStream CreateColumnStream<TEntry>(int bufferSize)
-            => new ColumnStreamFullStream<MemoryStream, VoidCodecFullStream>(
-                new MemoryStream(),
+        protected override IColumnStream CreateColumnStream<TEntry>(int bufferSize)
+            => new ColumnStreamFullStream<ColumnMemoryStream, VoidCodecFullStream>(
+                new ColumnMemoryStream(),
                 new VoidCodecFullStream(),
                 _allocator,
                 bufferSize);

@@ -6,12 +6,12 @@ using Minotaur.Streams;
 
 namespace Minotaur.Cursors
 {
-    public unsafe class ColumnCursor<TEntry, T, TStream> : IColumnCursor<T>
+    public unsafe class ColumnCursor<TEntry, T, TColumnStream> : IColumnCursor<T>
         where TEntry : unmanaged, IFieldEntry<T>
-        where TStream : IStream
+        where TColumnStream : IColumnStream
     {
         private readonly TEntry* _snapshot;
-        private readonly TStream _stream;
+        private readonly TColumnStream _stream;
         private readonly IAllocator _allocator;
 
         public long Ticks
@@ -26,7 +26,7 @@ namespace Minotaur.Cursors
             get => *(long*)(_snapshot + 1);
         }
 
-        public ColumnCursor(IAllocator allocator, TStream stream)
+        public  ColumnCursor(IAllocator allocator, TColumnStream stream)
         {
             _snapshot = allocator.Allocate<TEntry>(2);
             _allocator = allocator;

@@ -5,8 +5,7 @@ using Minotaur.Streams;
 
 namespace Minotaur.Cursors
 {
-    public class TimeSeriesCursor<TStream> : ICursor
-        where TStream : IStream
+    public class TimeSeriesCursor : ICursor
     {
         private readonly Dictionary<string, IColumnCursor> _columns;
         private readonly IColumnCursor[] _cursors;

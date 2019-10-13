@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Minotaur.Core.Platform;
+using Minotaur.Core;
 using Minotaur.Providers;
 using Minotaur.Streams;
 using NSubstitute;
@@ -24,14 +24,14 @@ namespace Minotaur.Tests
                 var dataProvider = Substitute.For<IDataProvider>();
                 dataProvider.Fetch(Arg.Any<string>(), Arg.Any<DateTime>(), Arg.Any<DateTime>())
                     .ReturnsForAnyArgs(p => p.ArgAt<DateTime>(1).SplitDaysTo(p.ArgAt<DateTime>(2))
-                        .SelectMany(d => Fmds(p.ArgAt<string>(0), new[] {"Column_1", "Column_2", "Column_3"}, d))
-                        .Select(m => CreateFile(rootFolder, m)));
+                        .SelectMany(d => Fmds(filePathProvider, p.ArgAt<string>(0), new[] {"Column_1", "Column_2", "Column_3"}, d))
+                        .Select(CreateFile));
 
-                var streamFactory = Substitute.For<IStreamFactory<Win32>>();
+                var streamFactory = Substitute.For<IStreamFactory<IStream>>();
                 var mockStream = Substitute.For<IStream>();
-                streamFactory.Create(Arg.Any<FileMetaData>()).Returns(mockStream);
+                streamFactory.CreateReader(Arg.Any<string>()).Returns(mockStream);
 
-                var provider = new StreamProvider<Win32>(filePathProvider, dataProvider, streamFactory);
+                var provider = new StreamProvider<IStream>(filePathProvider, streamFactory, dataProvider);
 
                 var symbol = "Symbol";
 
@@ -62,10 +62,11 @@ namespace Minotaur.Tests
                     foreach (var stream in provider.Fetch("Symbol", "Column_2", start, end))
                     {
                         var date = dates[idx++];
-                        streamFactory.Received(1).Create(Arg.Is<FileMetaData>(p =>
-                            p.Symbol == "Symbol" && p.Column == "Column_2" && p.Start == date));
 
-                        streamFactory.Received(1).Create(Arg.Any<FileMetaData>());
+                        var filePath = filePathProvider.GetFilePath("Symbol", "Column_2", date);
+                        streamFactory.Received(1).CreateReader(Arg.Is<string>(p => string.Equals(p, filePath)));
+
+                        streamFactory.Received(1).CreateReader(Arg.Any<string>());
 
                         streamFactory.ClearReceivedCalls();
                         Assert.AreEqual(mockStream, stream);
@@ -88,10 +89,10 @@ namespace Minotaur.Tests
                     foreach (var stream in provider.Fetch("Symbol", "Column_2", start, end))
                     {
                         var date = dates[idx++];
-                        streamFactory.Received(1).Create(Arg.Is<FileMetaData>(p =>
-                            p.Symbol == "Symbol" && p.Column == "Column_2" && p.Start == date));
+                        var filePath = filePathProvider.GetFilePath("Symbol", "Column_2", date);
+                        streamFactory.Received(1).CreateReader(Arg.Is<string>(p => string.Equals(p, filePath)));
 
-                        streamFactory.Received(1).Create(Arg.Any<FileMetaData>());
+                        streamFactory.Received(1).CreateReader(Arg.Any<string>());
 
                         streamFactory.ClearReceivedCalls();
                         Assert.AreEqual(mockStream, stream);
@@ -110,10 +111,10 @@ namespace Minotaur.Tests
                     foreach (var stream in provider.Fetch("Symbol", "Column_2", start, end))
                     {
                         var date = dates[idx++];
-                        streamFactory.Received(1).Create(Arg.Is<FileMetaData>(p =>
-                            p.Symbol == "Symbol" && p.Column == "Column_2" && p.Start == date));
+                        var filePath = filePathProvider.GetFilePath("Symbol", "Column_2", date);
+                        streamFactory.Received(1).CreateReader(Arg.Is<string>(p => string.Equals(p, filePath)));
 
-                        streamFactory.Received(1).Create(Arg.Any<FileMetaData>());
+                        streamFactory.Received(1).CreateReader(Arg.Any<string>());
 
                         streamFactory.ClearReceivedCalls();
                         Assert.AreEqual(mockStream, stream);
@@ -134,10 +135,10 @@ namespace Minotaur.Tests
         }
 
 
-        private static IEnumerable<FileMetaData> Fmds(string symbol, string[] columns, DateTime start, DateTime? end = null)
-            => (columns ?? new string[0]).Select(p => Fmd(symbol, p, start, end));
+        private static IEnumerable<FileMetaData> Fmds(IFilePathProvider provider, string symbol, string[] columns, DateTime start, DateTime? end = null)
+            => (columns ?? new string[0]).Select(p => Fmd(provider, symbol, p, start, end));
 
-        private static FileMetaData Fmd(string symbol, string column, DateTime start, DateTime? end = null)
+        private static FileMetaData Fmd(IFilePathProvider provider, string symbol, string column, DateTime start, DateTime? end = null)
         {
             return new FileMetaData()
             {
@@ -145,13 +146,13 @@ namespace Minotaur.Tests
                 Column = column,
                 Start = start.Date,
                 End = end ?? start.Date.AddDays(1).Date,
-                FilePath = $"{symbol}_{column}_{start:yyyy-MM-dd}.min"
+                FilePath = provider.GetFilePath(symbol, column, start)
             };
         }
 
-        private static FileMetaData CreateFile(string folder, FileMetaData m)
+        private static FileMetaData CreateFile(FileMetaData m)
         {
-            m.FilePath = Path.Combine(folder, m.FilePath);
+            m.FilePath.GetFolderPath().CreateFolderIfNotExist();
             File.WriteAllText(m.FilePath, "Test");
             return m;
         }

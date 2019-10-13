@@ -101,19 +101,19 @@ namespace Minotaur.Tests
 
         #region Write
 
-        public static unsafe int Write(this IStream stream, DoubleEntry[] chunk)
+        public static unsafe int Write(this IColumnStream stream, DoubleEntry[] chunk)
         {
             fixed (DoubleEntry* p = chunk)
                 return stream.Write((byte*)p, chunk.Length * sizeof(DoubleEntry));
         }
 
-        public static unsafe int Write(this IStream stream, Int32Entry[] chunk)
+        public static unsafe int Write(this IColumnStream stream, Int32Entry[] chunk)
         {
             fixed (Int32Entry* p = chunk)
                 return stream.Write((byte*)p, chunk.Length * sizeof(Int32Entry));
         }
 
-        public static unsafe int Write(this IStream stream, DateTime[] chunk)
+        public static unsafe int Write(this IColumnStream stream, DateTime[] chunk)
         {
             var ticks = chunk.Select(p => p.Ticks).ToArray();
             fixed (long* p = ticks)

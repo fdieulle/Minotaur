@@ -20,7 +20,7 @@ namespace Minotaur.Pocs.Streams
     /// ----------|-------------------------------
     /// 1 Byte    | Checksum
     /// </summary>
-    public unsafe class ColumnStreamWithRetry<T, TCodec> : IStream
+    public unsafe class ColumnStreamWithRetry<T, TCodec> : IColumnStream
         where T : unmanaged
         where TCodec : ICodec<T>
     {

@@ -52,8 +52,8 @@ namespace Minotaur.Pocs.Streams
 	/// </summary>
 	/// <typeparam name="TStream"></typeparam>
 	/// <typeparam name="TCodec"></typeparam>
-	public unsafe class ColumnStreamFullStream<TStream, TCodec> : IStream
-        where TStream : IStream
+	public unsafe class ColumnStreamFullStream<TStream, TCodec> : IColumnStream
+        where TStream : IColumnStream
         where TCodec : ICodecFullStream
     {
         private const int HEAD_SIZE = sizeof(int);

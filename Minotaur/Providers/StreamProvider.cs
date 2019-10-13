@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Xml;
 using System.Xml.Serialization;
 using Minotaur.Core;
 using Minotaur.Core.Platform;
@@ -8,8 +10,8 @@ using Minotaur.Streams;
 
 namespace Minotaur.Providers
 {
-    public class StreamProvider<TPlatform> : IStreamProvider
-        where TPlatform : IPlatform
+    public class StreamProvider<TStream> : IStreamProvider<TStream>
+        where TStream : IStream
     {
         // Todo: Do a scan once a day to merge and resize all files and so update FileMetada btrees.
         // Todo: FilePath creation is delayed to DataCollector
@@ -17,22 +19,22 @@ namespace Minotaur.Providers
 
         private readonly Dictionary<string, BTree<DateTime, FileMetaData>> _bTrees = new Dictionary<string, BTree<DateTime, FileMetaData>>();
         private readonly IFilePathProvider _filePathProvider;
+        private readonly IStreamFactory<TStream> _streamFactory;
         private readonly IDataProvider _dataProvider;
-        private readonly IStreamFactory<TPlatform> _factory;
 
         public StreamProvider(
             IFilePathProvider filePathProvider,
-            IDataProvider dataProvider, 
-            IStreamFactory<TPlatform> factory)
+            IStreamFactory<TStream> streamFactory,
+            IDataProvider dataProvider)
         {
             _filePathProvider = filePathProvider;
+            _streamFactory = streamFactory;
             _dataProvider = dataProvider;
-            _factory = factory;
         }
 
         #region Implementation of IStreamProvider
 
-        public IEnumerable<IStream> Fetch(string symbol, string column, DateTime start, DateTime end)
+        public IEnumerable<TStream> Fetch(string symbol, string column, DateTime start, DateTime end)
         {
             var bTree = GetBTree(symbol, column);
 
@@ -47,7 +49,9 @@ namespace Minotaur.Providers
                     Persist(_filePathProvider.GetMetaFilePath(symbol, column), bTree);
                 }
 
-                yield return _factory.Create(entry.Value);
+                var reader = _streamFactory.CreateReader(entry.Value.FilePath);
+                if(reader != null)
+                    yield return reader;
                 start = entry.Value.End;
             }
 
@@ -60,15 +64,19 @@ namespace Minotaur.Providers
             }
         }
 
-        private IEnumerable<IStream> CollectAndFetch(string symbol, string column, DateTime start, DateTime end)
+        private IEnumerable<TStream> CollectAndFetch(string symbol, string column, DateTime start, DateTime end)
         {
             // Load from start to entry.Key
             foreach (var meta in _dataProvider.Fetch(symbol, start, end))
             {
                 // Todo: Update btree entries by locking and save metadata
                 AddMeta(meta);
-                if (meta.Column == column && meta.FilePath.FileExists())
-                    yield return _factory.Create(meta);
+                if (meta.Column == column)
+                {
+                    var reader = _streamFactory.CreateReader(meta.FilePath);
+                    if(reader != null)
+                        yield return reader;
+                }
             }
         }
 

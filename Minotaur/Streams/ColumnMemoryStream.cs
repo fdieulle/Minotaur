@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Minotaur.Streams
 {
-    public unsafe class MemoryStream : IStream
+    public unsafe class ColumnMemoryStream : IColumnStream
     {
         private byte[] _buffer;
         private int _capacity;
@@ -12,13 +12,13 @@ namespace Minotaur.Streams
 
         public int Position => _offset;
 
-        public MemoryStream(int capacity = 8192)
+        public ColumnMemoryStream(int capacity = 8192)
             : this(new byte[capacity])
         {
             _end = 0;
         }
 
-        public MemoryStream(byte[] buffer)
+        public ColumnMemoryStream(byte[] buffer)
         {
             _buffer = buffer ?? new byte[8192];
             _end = _capacity = _buffer.Length;

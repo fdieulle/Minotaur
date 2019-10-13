@@ -61,7 +61,7 @@ namespace Minotaur.Tests.Cursors
                 #region Prepare streams
 
                 // Create streams
-                var streams = new Dictionary<int, IStream>
+                var streams = new Dictionary<int, IColumnStream>
                 {
                     {1, CreateColumnStream(new VoidCodecFullStream(), allocator, blockSize)},
                     {2, CreateColumnStream(new VoidCodecFullStream(), allocator, blockSize)},
@@ -86,13 +86,13 @@ namespace Minotaur.Tests.Cursors
 
                 var fieldCursors = new Dictionary<string, IColumnCursor>
                 {
-                    {"1", new ColumnCursor<DoubleEntry, double, IStream>(allocator, streams[1])},
-                    {"2", new ColumnCursor<Int32Entry, int, IStream>(allocator, streams[2])},
-                    {"3", new ColumnCursor<DoubleEntry, double, IStream>(allocator, streams[3])},
-                    {"4", new ColumnCursor<Int32Entry, int, IStream>(allocator, streams[4])},
+                    {"1", new ColumnCursor<DoubleEntry, double, IColumnStream>(allocator, streams[1])},
+                    {"2", new ColumnCursor<Int32Entry, int, IColumnStream>(allocator, streams[2])},
+                    {"3", new ColumnCursor<DoubleEntry, double, IColumnStream>(allocator, streams[3])},
+                    {"4", new ColumnCursor<Int32Entry, int, IColumnStream>(allocator, streams[4])},
                 };
 
-                var cursor = new TimeSeriesCursor<IStream>(fieldCursors);
+                var cursor = new TimeSeriesCursor(fieldCursors);
 
                 snapshots.RunMoveNext(cursor);
             }
@@ -102,10 +102,10 @@ namespace Minotaur.Tests.Cursors
             }
         }
 
-        protected static IStream CreateColumnStream(ICodecFullStream codec, IAllocator allocator, int bufLen)
+        protected static IColumnStream CreateColumnStream(ICodecFullStream codec, IAllocator allocator, int bufLen)
         {
-            return new ColumnStreamFullStream<MemoryStream, ICodecFullStream>(
-                new MemoryStream(),
+            return new ColumnStreamFullStream<ColumnMemoryStream, ICodecFullStream>(
+                new ColumnMemoryStream(),
                 codec,
                 allocator,
                 bufLen);

@@ -40,7 +40,7 @@ namespace Minotaur.Tests
                 Assert.AreEqual(x[i], y[i], "at index {0}", i);
         }
 
-        public static void CheckAndReset(this MemoryStream stream, int position)
+        public static void CheckAndReset(this ColumnMemoryStream stream, int position)
         {
             stream.Position.Check(position);
             stream.Reset();

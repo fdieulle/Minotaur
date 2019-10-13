@@ -11,7 +11,7 @@ namespace Minotaur
         #region IStream extensions
 
         public static unsafe int Write<TStream>(this TStream stream, Array data, int itemSize)
-            where TStream : IStream
+            where TStream : IColumnStream
         {
             var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
             var p = (byte*)handle.AddrOfPinnedObject();
@@ -21,7 +21,7 @@ namespace Minotaur
         }
 
         public static int WriteAndReset<TStream>(this TStream stream, Array data, int itemSize)
-            where TStream : IStream
+            where TStream : IColumnStream
         {
             var wrote = stream.Write(data, itemSize);
             stream.Flush();
@@ -43,7 +43,7 @@ namespace Minotaur
                 using (var writer = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
                     serializer.Serialize(writer, data);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // Todo: Log something here
             }
@@ -58,7 +58,7 @@ namespace Minotaur
                 using (var reader = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                     return (T)serializer.Deserialize(reader);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // Todo: Log something here
             }

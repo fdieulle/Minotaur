@@ -28,17 +28,17 @@ namespace Minotaur.Tests.Streams
         protected virtual void OnSetup() { }
         protected virtual void OnTeardown() { }
 
-        protected virtual IStream CreateColumnStream<TEntry>(int bufferSize)
+        protected virtual IColumnStream CreateColumnStream<TEntry>(int bufferSize)
             where TEntry : unmanaged
             => new ColumnStream<TEntry>(
-                new System.IO.MemoryStream(),
+                new MinotaurMemoryStream(),
                 new VoidCodec<TEntry>(),
                 bufferSize);
 
         [Test]
         public void ReadWriteWorkflowTest()
         {
-            var ms = new System.IO.MemoryStream();
+            var ms = new MinotaurMemoryStream();
 
             const int bufferSize = 1024;
             var wrapSize = sizeof(PayloadHeader) + sizeof(byte);
@@ -100,7 +100,7 @@ namespace Minotaur.Tests.Streams
             readBuffer.Dispose();
         }
 
-        private static void ReadWf(IStream stream, UnsafeBuffer rData, int len, byte wVal, int wLen)
+        private static void ReadWf(IColumnStream stream, UnsafeBuffer rData, int len, byte wVal, int wLen)
         {
             // Clean
             rData.SetAll(0);

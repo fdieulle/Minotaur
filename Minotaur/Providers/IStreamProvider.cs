@@ -4,8 +4,8 @@ using Minotaur.Streams;
 
 namespace Minotaur.Providers
 {
-    public interface IStreamProvider
+    public interface IStreamProvider<out TStream> where TStream : IStream
     {
-        IEnumerable<IStream> Fetch(string symbol, string column, DateTime start, DateTime end);
+        IEnumerable<TStream> Fetch(string symbol, string column, DateTime start, DateTime end);
     }
 }

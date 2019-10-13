@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 using Minotaur.Core.Platform;
 using Minotaur.Native;
@@ -8,13 +9,14 @@ using Minotaur.Streams;
 
 namespace Minotaur.Recorders
 {
-    public unsafe class TimeSeriesRecorder<TPlatform> : ITimeSeriesRecorder, IRowRecorder<ITimeSeriesRecorder>
-        where TPlatform : IPlatform
+    public unsafe class TimeSeriesRecorder<TStream> : ITimeSeriesRecorder, IRowRecorder<ITimeSeriesRecorder>
+        where TStream : IStream
     {
         // Todo: Stream size heuristic is delayed to the Stream
 
         private readonly string _symbol;
-        private readonly IStreamFactory<TPlatform> _streamFactory;
+        private readonly IColumnFactory _columnFactory;
+        private readonly IStreamFactory<TStream> _streamFactory;
         private readonly IFilePathProvider _filePathProvider;
         private readonly Dictionary<string, Column> _columns = new Dictionary<string, Column>();
         private readonly List<FileMetaData> _metaData = new List<FileMetaData>();
@@ -26,10 +28,12 @@ namespace Minotaur.Recorders
 
         public TimeSeriesRecorder(
             string symbol, 
-            IStreamFactory<TPlatform> streamFactory,
+            IColumnFactory columnFactory,
+            IStreamFactory<TStream> streamFactory,
             IFilePathProvider filePathProvider)
         {
             _symbol = symbol;
+            _columnFactory = columnFactory;
             _streamFactory = streamFactory;
             _filePathProvider = filePathProvider;
 
@@ -86,12 +90,18 @@ namespace Minotaur.Recorders
                     Start = _currentTimestamp,
                     FilePath = _filePathProvider.GetFilePath(_symbol, column, _currentTimestamp)
                 };
+                var columnInfo = new ColumnInfo()
+                {
+                    Name = column,
+                    Type = Natives.GetType<T>(),
+                };
+                var file = _streamFactory.CreateWriter(meta.FilePath);
 
                 // be sure that there is no hole between time lines
                 if (tuple != null)
                     tuple.Meta.End = _currentTimestamp;
                 
-                _columns[column] = tuple = new Column{ Meta = meta, Stream = _streamFactory.Create(meta) };
+                _columns[column] = tuple = new Column{ Meta = meta, Stream = _columnFactory.CreateStream(columnInfo, file) };
             }
 
             // Keep track of timeline end
@@ -134,7 +144,7 @@ namespace Minotaur.Recorders
         private class Column
         {
             public FileMetaData Meta { get; set; }
-            public IStream Stream { get; set; }
+            public IColumnStream Stream { get; set; }
         }
     }
 }

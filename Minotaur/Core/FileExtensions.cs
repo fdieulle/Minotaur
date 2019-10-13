@@ -19,12 +19,19 @@ namespace Minotaur.Core
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // Todo: log error here
             }
 
             return path;
+        }
+
+        public static string GetFolderPath(this string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath)) return filePath;
+
+            return new FileInfo(filePath).Directory?.FullName;
         }
 
         public static bool FileSpinWait(this string filePath, int timeout = -1)
@@ -58,7 +65,7 @@ namespace Minotaur.Core
             {
                 File.WriteAllText(lockFilePath, lockFileContent);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // Todo: log error here
             }
@@ -69,7 +76,7 @@ namespace Minotaur.Core
                 {
                     File.Delete(lockFilePath);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     // Todo: log error here
                 }

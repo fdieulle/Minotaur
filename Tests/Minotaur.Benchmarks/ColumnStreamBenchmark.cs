@@ -11,7 +11,6 @@ using Minotaur.Pocs.Codecs;
 using Minotaur.Pocs.Streams;
 using Minotaur.Streams;
 using Minotaur.Tests;
-using MemoryStream = Minotaur.Streams.MemoryStream;
 
 namespace Minotaur.Benchmarks
 {
@@ -22,12 +21,12 @@ namespace Minotaur.Benchmarks
     {
         private const int WROTE = 1024 * 5;
         private const int READ = 256;
-        private ColumnStreamFullStream<MemoryStream, VoidCodecFullStream> _csFullClassBase;
+        private ColumnStreamFullStream<ColumnMemoryStream, VoidCodecFullStream> _csFullClassBase;
         private ColumnStreamWithRetry<byte, VoidCodec<byte>> _csFullClass;
         private ColumnStream<byte> _csUnsafeClass;
         private readonly IAllocator _allocator = new DummyUnmanagedAllocator();
         private readonly List<IntPtr> _unmanagedPtr = new List<IntPtr>();
-        private readonly List<IStream> _streams = new List<IStream>();
+        private readonly List<IColumnStream> _streams = new List<IColumnStream>();
         private byte* _rData;
         private byte[] _readData;
 
@@ -113,12 +112,12 @@ namespace Minotaur.Benchmarks
         //    return read;
         //}
 
-        private ColumnStreamFullStream<MemoryStream, TCodec> CreateCsb<TCodec>(TCodec codec, byte[] data)
+        private ColumnStreamFullStream<ColumnMemoryStream, TCodec> CreateCsb<TCodec>(TCodec codec, byte[] data)
             where TCodec : ICodecFullStream
         {
-            var memory = new MemoryStream();
+            var memory = new ColumnMemoryStream();
 
-            var stream = new ColumnStreamFullStream<MemoryStream, TCodec>(memory, codec, _allocator, 1024);
+            var stream = new ColumnStreamFullStream<ColumnMemoryStream, TCodec>(memory, codec, _allocator, 1024);
             stream.WriteAndReset(data, sizeof(byte));
 
             _streams.Add(stream);
@@ -168,7 +167,7 @@ namespace Minotaur.Benchmarks
         private ColumnStream<T> CreateCsub<T>(ICodec<T> codec, byte[] data) where T : unmanaged
         {
             var stream = new ColumnStream<T>(
-                new System.IO.MemoryStream(),
+                new MinotaurMemoryStream(),
                 codec,
                 1024);
 
@@ -210,7 +209,7 @@ namespace Minotaur.Benchmarks
         #endregion
     }
 
-    public unsafe struct TemplateMemoryStream : IStream
+    public unsafe struct TemplateMemoryStream : IColumnStream
     {
         private byte* _buffer;
         private int _offset;
@@ -340,8 +339,8 @@ namespace Minotaur.Benchmarks
 	/// </summary>
 	/// <typeparam name="TStream"></typeparam>
 	/// <typeparam name="TCodec"></typeparam>
-	public unsafe class ColumnStreamNew<TStream, TCodec> : IStream
-        where TStream : IStream
+	public unsafe class ColumnStreamNew<TStream, TCodec> : IColumnStream
+        where TStream : IColumnStream
         where TCodec : ICodecFullStream
     {
         private const int HEAD_SIZE = sizeof(int);

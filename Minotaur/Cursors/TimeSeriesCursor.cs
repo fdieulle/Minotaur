@@ -36,11 +36,10 @@ namespace Minotaur.Cursors
                     if (_cursors[i].Ticks > _ticks)
                         _ticks = _cursors[i].Ticks;
 
-                    if (_cursors[i].NextTicks < _nextTicks)
-                        _nextTicks = _cursors[i].NextTicks;
+                    _nextTicks = Math.Min(_nextTicks, _cursors[i].NextTicks);
                 }
             }
-
+            
             return new DateTime(_nextTicks);
         }
 

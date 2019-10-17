@@ -26,7 +26,9 @@ namespace Minotaur.Cursors
             get => *(long*)(_snapshot + 1);
         }
 
-        public  ColumnCursor(IAllocator allocator, TColumnStream stream)
+        public TEntry* Entry => _snapshot;
+
+        public ColumnCursor(IAllocator allocator, TColumnStream stream)
         {
             _snapshot = allocator.Allocate<TEntry>(2);
             _allocator = allocator;

@@ -9,13 +9,11 @@ namespace Minotaur.Streams
     /// </summary>
     public interface IStream : IDisposable
     {
-        bool CanSeek { get; }
-
         int Read(byte[] buffer, int offset, int count);
 
         void Write(byte[] buffer, int offset, int count);
 
-        long Seek(long offset, SeekOrigin origin);
+        void Reset();
 
         void Flush();
     }    

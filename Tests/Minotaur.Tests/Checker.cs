@@ -1,5 +1,6 @@
 ﻿using System;
 using Minotaur.Core;
+using Minotaur.Cursors;
 using Minotaur.Native;
 using Minotaur.Providers;
 using Minotaur.Streams;
@@ -89,6 +90,13 @@ namespace Minotaur.Tests
             Assert.AreEqual(type, meta.Type, "Type");
             Assert.AreEqual(start.ToDateTime(), meta.Start, "Start");
             Assert.AreEqual(end.ToDateTime(), meta.End, "End");
+        }
+
+        public static void Check<T>(this IFieldProxy<T> proxy, T value, string timestamp = null)
+        {
+            if(!string.IsNullOrEmpty(timestamp))
+                Assert.AreEqual(timestamp.ToDateTime(), proxy.Timestamp, "Timestamp");
+            Assert.AreEqual(value, proxy.Value, "Value");
         }
     }
 }

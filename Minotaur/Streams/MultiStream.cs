@@ -1,97 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.Win32.SafeHandles;
+using Minotaur.Core;
 
 namespace Minotaur.Streams
 {
-    public class MultiStream<TStream> : IStream
-        where TStream : IStream
-    {
-        private readonly IEnumerator<TStream> _enumerator;
-        private TStream _current;
-
-        public MultiStream(IEnumerable<TStream> streams)
-        {
-            _enumerator = streams.GetEnumerator();
-        }
-
-        #region Implementation of IStream
-        
-        public bool CanSeek { get; } = true;
-
-        public int Read(byte[] buffer, int offset, int count)
-        {
-            var read = 0;
-
-            while (_current == null || (read = _current.Read(buffer, offset, count)) == 0)
-            {
-                _current?.Dispose();
-
-                if (_enumerator.MoveNext())
-                    _current = _enumerator.Current;
-                else break;
-            }
-
-            return read;
-        }
-
-        public void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotImplementedException();
-        }
-
-        public long Seek(long offset, SeekOrigin origin)
-        {
-            long seek = 0;
-            if(origin == SeekOrigin.Begin)
-                _enumerator.Reset();
-
-            if (origin != SeekOrigin.End)
-            {
-                while (_current == null || (seek += _current.Seek(offset - seek, origin)) < offset)
-                {
-                    _current?.Dispose();
-
-                    if (_enumerator.MoveNext())
-                        _current = _enumerator.Current;
-                    else break;
-                }
-            }
-            else
-            {
-                _enumerator.Reset();
-                var queue = new Queue<TStream>();
-                while (_enumerator.MoveNext())
-                    queue.Enqueue(_enumerator.Current);
-                while (queue.Count > 0)
-                {
-                    _current = queue.Dequeue();
-                    seek += _current.Seek(offset - seek, origin);
-                    if(seek >= offset) break;
-                }
-            }
-
-            return seek;
-        }
-
-        public void Flush() => _current.Flush();
-
-        #endregion
-
-        #region Implementation of IDisposable
-
-        public void Dispose()
-        {
-            _current.Dispose();
-            _enumerator.Dispose();
-        }
-
-        #endregion
-    }
-
-    
-
     public class MinotaurMemoryStream : System.IO.MemoryStream, IStream
     {
         public MinotaurMemoryStream() { }
@@ -113,34 +26,92 @@ namespace Minotaur.Streams
 
         public MinotaurMemoryStream(int capacity) 
             : base(capacity) { }
+
+        public void Reset()
+        {
+            Seek(0, SeekOrigin.Begin);
+        }
     }
 
-    public class MinotaurFileStream : FileStream, IStream {
-        public MinotaurFileStream(SafeFileHandle handle, FileAccess access) 
-            : base(handle, access) { }
+    public class MinotaurFileStream : IStream
+    {
+        private readonly IEnumerator<string> _enumerator;
+        private readonly IDisposable _fileLocker;
+        private FileStream _current;
 
-        public MinotaurFileStream(SafeFileHandle handle, FileAccess access, int bufferSize) 
-            : base(handle, access, bufferSize) { }
+        public long Position => _current?.Position ?? 0;
+        public long Length => _current?.Length ?? 0;
 
-        public MinotaurFileStream(SafeFileHandle handle, FileAccess access, int bufferSize, bool isAsync) 
-            : base(handle, access, bufferSize, isAsync) { }
+        /// <summary>
+        /// Reader Ctor.
+        /// </summary>
+        public MinotaurFileStream(IEnumerable<string> filePaths)
+        {
+            _enumerator = filePaths.GetEnumerator();
+        }
 
-        public MinotaurFileStream(string path, FileMode mode) 
-            : base(path, mode) { }
+        /// <summary>
+        /// Writer ctor
+        /// </summary>
+        public MinotaurFileStream(string filePath)
+        {
+            filePath.GetFolderPath().CreateFolderIfNotExist();
+            _fileLocker = filePath.FileLock();
+            _current = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, 1);
+            //??_current.SetLength(length);
+        }
 
-        public MinotaurFileStream(string path, FileMode mode, FileAccess access) 
-            : base(path, mode, access) { }
+        public int Read(byte[] buffer, int offset, int count)
+        {
+            var read = 0;
 
-        public MinotaurFileStream(string path, FileMode mode, FileAccess access, FileShare share) 
-            : base(path, mode, access, share) { }
+            while (_current == null || (read = _current.Read(buffer, offset, count)) == 0)
+            {
+                _current?.Dispose();
 
-        public MinotaurFileStream(string path, FileMode mode, FileAccess access, FileShare share, int bufferSize) 
-            : base(path, mode, access, share, bufferSize) { }
+                do
+                {
+                    if (!_enumerator.MoveNext())
+                        return read;
+                }
+                while (!_enumerator.Current.FileExists());
 
-        public MinotaurFileStream(string path, FileMode mode, FileAccess access, FileShare share, int bufferSize, bool useAsync) 
-            : base(path, mode, access, share, bufferSize, useAsync) { }
+                if (_enumerator.Current != null)
+                    _current = new FileStream(_enumerator.Current, FileMode.Open, FileAccess.Read, FileShare.Read, 1);
+                else break;
+            }
 
-        public MinotaurFileStream(string path, FileMode mode, FileAccess access, FileShare share, int bufferSize, FileOptions options) 
-            : base(path, mode, access, share, bufferSize, options) { }
+            return read;
+        }
+
+        public void Write(byte[] buffer, int offset, int count)
+        {
+            _current.Write(buffer, offset, count);
+        }
+
+        public void Reset()
+        {
+            // Reset the writer part
+            if (_current != null && _current.CanSeek)
+                _current.Seek(0, SeekOrigin.Begin);
+
+            // Reset the reader part
+            if (_enumerator != null && _current != null)
+            {
+                _enumerator.Reset();
+                _current = null;
+            }
+        }
+
+        public void Flush()
+        {
+            _current?.Flush();
+        }
+
+        public void Dispose()
+        {
+            _current?.Dispose();
+            _fileLocker?.Dispose();
+        }
     }
 }

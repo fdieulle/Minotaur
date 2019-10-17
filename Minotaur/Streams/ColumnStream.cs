@@ -147,8 +147,7 @@ namespace Minotaur.Streams
 
         public void Reset()
         {
-            if (_underlying.CanSeek)
-                _underlying.Seek(0, SeekOrigin.Begin);
+            _underlying.Reset();
             _decodedBuffer.Reset();
         }
 

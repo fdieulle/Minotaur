@@ -3,15 +3,15 @@ Distribution framework for timeseries data access and distributed tasks
 
 # Layers
 
-|----------|--------|
-| Recorder | Cursor |
-|----------|--------|
-|   Column stream   |
-|-------------------|
-|        Codec      |
-|-------------------|
-|      IO stream    |
-|-------------------|
+|----------|--------|-----|
+| Recorder | Cursor |	  |
+|----------|--------|	  |
+|   Column stream   |	  |
+|-------------------| IDb |
+|        Codec      |	  |
+|-------------------|	  |
+|      IO stream    |	  |
+|-------------------|-----|
 
 
 # Meta

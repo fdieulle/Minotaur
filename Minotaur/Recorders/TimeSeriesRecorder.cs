@@ -106,15 +106,7 @@ namespace Minotaur.Recorders
             // Write into buffer then push it to the stream.
             Natives.WriteValue(_buffer + sizeof(long), ref value);
             var length = sizeof(long) + sizeof(T);
-            if (tuple.Stream.Write(_buffer, length) < length) 
-            {
-                // We hit the end of stream so we roll it
-                _columns.Remove(column);
-                tuple.Stream.Flush();
-
-                Record(column, value); // Todo: Maybe check a max retry here to avoid overflow exception
-                return this;
-            }
+            tuple.Stream.Write(_buffer, length);
 
             return this;
         }

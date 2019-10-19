@@ -11,7 +11,6 @@ namespace Minotaur.Native
         public const int SIZE_OF_VALUE_LENGTH = 1;
         public const int SIZE_OF_VALUE = SIZE - SIZE_OF_TICKS - SIZE_OF_VALUE_LENGTH - 1;
         
-
         [FieldOffset(0)]
         public long ticks;
         [FieldOffset(8)]
@@ -52,7 +51,7 @@ namespace Minotaur.Native
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(null, obj)) return false;
-            return obj is StringEntry && Equals((StringEntry)obj);
+            return obj is StringEntry entry && Equals(entry);
         }
 
         public override int GetHashCode()
@@ -105,9 +104,6 @@ namespace Minotaur.Native
             return new string(array);
         }
 
-        public override string ToString()
-        {
-            return $"Index: {new DateTime(ticks)}, Value: {GetValue()}";
-        }
+        public override string ToString() => $"Index: {new DateTime(ticks)}, Value: {GetValue()}";
     }
 }

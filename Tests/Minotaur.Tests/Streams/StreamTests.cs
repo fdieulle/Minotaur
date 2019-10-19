@@ -1,5 +1,4 @@
-﻿using System.IO;
-using Minotaur.Streams;
+﻿using Minotaur.Pocs.Streams;
 using NUnit.Framework;
 
 namespace Minotaur.Tests.Streams

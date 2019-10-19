@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using Minotaur.Codecs;
 using Minotaur.Core;
-using Minotaur.Pocs.Codecs;
+using Minotaur.IO;
 using Minotaur.Pocs.Codecs.Int32;
 using Minotaur.Pocs.Streams;
 using Minotaur.Streams;
@@ -62,7 +62,7 @@ namespace Minotaur.Tests.Streams
             stream.Flush();
             ms.Position.Check(write + wrapSize);
             
-            ReadWf(stream, readBuffer, fullBufferSize, 2, write);
+            ReadWf(stream, readBuffer, 2, write);
 
             // 2. Test write more than buffer
             writeBuffer.SetAll(2);
@@ -77,7 +77,7 @@ namespace Minotaur.Tests.Streams
             stream.Flush();
             ms.Position.Check(write + 5 * wrapSize);
             
-            ReadWf(stream, readBuffer, fullBufferSize, 2, write);
+            ReadWf(stream, readBuffer, 2, write);
 
             // 2. Test write exactly buffer size
             writeBuffer.SetAllUntil(bufferSizeWithoutWrapSize, 2);
@@ -93,14 +93,14 @@ namespace Minotaur.Tests.Streams
             ms.Position.Check(bufferSize + wrapSize);
             stream.Reset();
 
-            ReadWf(stream, readBuffer, fullBufferSize, 2, write);
+            ReadWf(stream, readBuffer, 2, write);
 
             stream.Dispose();
             writeBuffer.Dispose();
             readBuffer.Dispose();
         }
 
-        private static void ReadWf(IColumnStream stream, UnsafeBuffer rData, int len, byte wVal, int wLen)
+        private static void ReadWf(IColumnStream stream, UnsafeBuffer rData, byte wVal, int wLen)
         {
             // Clean
             rData.SetAll(0);
@@ -227,7 +227,5 @@ namespace Minotaur.Tests.Streams
                 handle.Free();
             }
         }
-
-        private static ICodecFullStream[] A(params ICodecFullStream[] array) => array;
     }
 }

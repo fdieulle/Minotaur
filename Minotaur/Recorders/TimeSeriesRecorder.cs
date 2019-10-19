@@ -2,8 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using Minotaur.Core;
+using Minotaur.Db;
+using Minotaur.Meta;
 using Minotaur.Native;
-using Minotaur.Providers;
 using Minotaur.Streams;
 
 namespace Minotaur.Recorders
@@ -97,8 +98,8 @@ namespace Minotaur.Recorders
                 tuple.Stream = _dbUpdater.CreateColumnWriter(_symbol, tuple, _currentTimestamp);
             }
 
-            if (!tuple.Type.IsFongible<T>())
-                throw new InvalidDataException($"The value of type {typeof(T)} isn't fongible with {tuple.Type}");
+            if (!tuple.Type.IsFungible<T>())
+                throw new InvalidDataException($"The value of type {typeof(T)} isn't fungible with {tuple.Type}");
 
             // Keep track of timeline end
             tuple.End = _currentTimestamp;

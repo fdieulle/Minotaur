@@ -1,7 +1,7 @@
 ﻿using System;
-using System.IO;
+using Minotaur.Streams;
 
-namespace Minotaur.Streams
+namespace Minotaur.Pocs.Streams
 {
     public unsafe class ColumnMemoryStream : IColumnStream
     {

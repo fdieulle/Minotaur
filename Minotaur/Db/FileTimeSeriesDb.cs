@@ -1,93 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
 using Minotaur.Codecs;
 using Minotaur.Core;
 using Minotaur.Cursors;
+using Minotaur.IO;
+using Minotaur.Meta;
 using Minotaur.Native;
 using Minotaur.Providers;
 using Minotaur.Recorders;
+using Minotaur.Streams;
 
-namespace Minotaur.Streams
+namespace Minotaur.Db
 {
-    // Todo: remove it
-    public interface IStreamFactory<TStream> where TStream : IStream
-    {
-        TStream CreateReader(string filePath);
-        TStream CreateWriter(string filePath);
-    }
-   
-    public class ColumnStreamFactory<TStream>
-        where TStream : IStream
-    {
-        public IColumnCursor CreateCursor(ColumnInfo column, TStream stream, IAllocator allocator)
-        {
-            switch (column.Type)
-            {
-                case FieldType.Float:
-                    return CreateCursor<FloatEntry, float>(stream, allocator);
-                case FieldType.Double:
-                    return CreateCursor<DoubleEntry, double>(stream, allocator);
-                case FieldType.Int32:
-                    return CreateCursor<Int32Entry, int>(stream, allocator);
-                case FieldType.Int64:
-                    return CreateCursor<Int64Entry, long>(stream, allocator);
-                case FieldType.String:
-                    return CreateCursor<StringEntry, string>(stream, allocator);
-                default:
-                    throw new NotSupportedException($"Type not supported: {column.Type}, for column : {column.Name}");
-            }
-        }
-
-        private ColumnCursor<TEntry, T, ColumnStream<TEntry>> CreateCursor<TEntry, T>(IStream stream, IAllocator allocator)
-            where TEntry : unmanaged, IFieldEntry<T> 
-            => new ColumnCursor<TEntry, T, ColumnStream<TEntry>>(allocator, CreateColumnStream<TEntry, T>(stream));
-
-        public IColumnStream CreateStream(ColumnInfo column, TStream stream)
-        {
-            switch (column.Type)
-            {
-                case FieldType.Float:
-                    return CreateColumnStream<FloatEntry, float>(stream);
-                case FieldType.Double:
-                    return CreateColumnStream<DoubleEntry, double>(stream);
-                case FieldType.Int32:
-                    return CreateColumnStream<Int32Entry, int>(stream);
-                case FieldType.Int64:
-                    return CreateColumnStream<Int64Entry, long>(stream);
-                case FieldType.String:
-                    return CreateColumnStream<StringEntry, string>(stream);
-                default:
-                    throw new NotSupportedException($"Type not supported: {column.Type}, for column : {column.Name}");
-            }
-        }
-
-        public ColumnStream<TEntry> CreateColumnStream<TEntry, T>(IStream stream) 
-            where TEntry : unmanaged, IFieldEntry<T>
-            => new ColumnStream<TEntry>(stream, new VoidCodec<TEntry>());
-    }
-
-    public interface ITimeSeriesDb
-    {
-        ICursor GetCursor(string symbol, DateTime start, DateTime? end = null, string[] columns = null);
-
-        ITimeSeriesRecorder CreateRecorder(string symbol);
-
-        void Insert(string symbol, Dictionary<string, Array> data);
-
-        void Delete(string symbol, DateTime start, DateTime end, string[] columns = null);
-    }
-
-    public interface ITimeSeriesDbUpdater
-    {
-        IColumnStream CreateColumnWriter(string symbol, ColumnInfo column, DateTime start);
-        void CommitColumn(string symbol, ColumnInfo column, DateTime start, DateTime end);
-        void RevertColumn(string symbol, string column, DateTime start);
-    }
-
     public class FileTimeSeriesDb : ITimeSeriesDb, ITimeSeriesDbUpdater
     {
         private const int STREAM_CAPACITY = 8192;
@@ -258,15 +185,15 @@ namespace Minotaur.Streams
             switch (column.Type)
             {
                 case FieldType.Float:
-                    return Merge<FloatEntry, float>(x, y, symbol, column.Name, start);
+                    return Merge<FloatEntry, float>(x, y, symbol, column.Name, start, filter);
                 case FieldType.Double:
-                    return Merge<DoubleEntry, double>(x, y, symbol, column.Name, start);
+                    return Merge<DoubleEntry, double>(x, y, symbol, column.Name, start, filter);
                 case FieldType.Int32:
-                    return Merge<Int32Entry, int>(x, y, symbol, column.Name, start);
+                    return Merge<Int32Entry, int>(x, y, symbol, column.Name, start, filter);
                 case FieldType.Int64:
-                    return Merge<Int64Entry, long>(x, y, symbol, column.Name, start);
+                    return Merge<Int64Entry, long>(x, y, symbol, column.Name, start, filter);
                 case FieldType.String:
-                    return Merge<StringEntry, string>(x, y, symbol, column.Name, start);
+                    return Merge<StringEntry, string>(x, y, symbol, column.Name, start, filter);
                 default:
                     throw new InvalidDataException($"Unknown column type during merge. Symbol: {symbol}, Column: {column.Name}, Type: {column.Type}");
             }
@@ -406,8 +333,8 @@ namespace Minotaur.Streams
                 var meta = serializer.Deserialize<SymbolMeta>(metaFilePath) ?? new SymbolMeta { Symbol = symbol };
 
                 meta.Columns = meta.Columns?
-                    .Where(p => !string.Equals(p.Name, column.Name))
-                    .ToList() ?? new List<ColumnMeta>();
+                                   .Where(p => !string.Equals(p.Name, column.Name))
+                                   .ToList() ?? new List<ColumnMeta>();
                 meta.Columns.Add(CreateColumnMeta(column));
 
                 serializer.Serialize(metaFilePath, meta);
@@ -428,7 +355,7 @@ namespace Minotaur.Streams
             using (metaFilePath.FileLock())
             {
                 return serializer.Deserialize<SymbolMeta>(metaFilePath)
-                           ?.Columns?.Select(p => p.Name)?.ToArray() ?? new string[0];
+                           ?.Columns?.Select(p => p.Name).ToArray() ?? new string[0];
             }
         }
 
@@ -448,29 +375,6 @@ namespace Minotaur.Streams
                         BTree.Insert(slice.Start, slice);
                 }
             }
-        }
-    }
-
-    public class SymbolMeta
-    {
-        public string Symbol { get; set; }
-
-        public List<ColumnMeta> Columns { get; set; } = new List<ColumnMeta>();
-    }
-
-    public class ColumnMeta : ColumnInfo
-    {
-        public List<TimeSlice> Timeline { get; set; }
-    }
-
-    public class TimeSlice
-    {
-        public DateTime Start { get; set; }
-        public DateTime End { get; set; }
-
-        public override string ToString()
-        {
-            return $"{nameof(Start)}: {Start:yyyy-MM-dd HH:mm:ss.fff}, {nameof(End)}: {End:yyyy-MM-dd HH:mm:ss.fff}";
         }
     }
 }

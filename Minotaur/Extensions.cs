@@ -51,7 +51,7 @@ namespace Minotaur
 
         public static T Deserialize<T>(this XmlSerializer serializer, string filePath)
         {
-            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return default(T);
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return default;
 
             try
             {
@@ -63,7 +63,7 @@ namespace Minotaur
                 // Todo: Log something here
             }
 
-            return default(T);
+            return default;
         }
 
         #endregion 

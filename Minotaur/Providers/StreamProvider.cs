@@ -1,15 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Xml;
 using System.Xml.Serialization;
 using Minotaur.Core;
-using Minotaur.Core.Platform;
-using Minotaur.Streams;
+using Minotaur.IO;
 
 namespace Minotaur.Providers
 {
+    // Todo: remove it. Kept now only for its lazy data collector algorithm based on BTree
+    public interface IStreamFactory<TStream> where TStream : IStream
+    {
+        TStream CreateReader(string filePath);
+        TStream CreateWriter(string filePath);
+    }
+    // Todo: remove it but keep it for lazy data collector algorithm
     public class StreamProvider<TStream> : IStreamProvider<TStream>
         where TStream : IStream
     {
@@ -138,5 +142,34 @@ namespace Minotaur.Providers
         }
 
         #endregion
+    }
+
+    public interface IStreamProvider<out TStream> where TStream : IStream
+    {
+        IEnumerable<TStream> Fetch(string symbol, string column, DateTime start, DateTime end);
+    }
+
+    public class FileMetaData
+    {
+        public string Symbol { get; set; }
+
+        public string Column { get; set; }
+
+        public FieldType Type { get; set; }
+
+        public DateTime Start { get; set; }
+
+        public DateTime End { get; set; }
+
+        // Todo: The file path creation has to be owmn by the data collector
+        public string FilePath { get; set; }
+
+        //public string GetFilePath(string folder)
+        //    => Path.Combine(folder, Start.Year.ToString(), Symbol, $"{Symbol}_{Column}_{Start:yyyy-MM-dd_HH:mm:ss}.min");
+    }
+
+    public interface IDataProvider
+    {
+        IEnumerable<FileMetaData> Fetch(string symbol, DateTime start, DateTime end);
     }
 }

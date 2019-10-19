@@ -1,8 +1,7 @@
 ﻿using System;
 using Minotaur.Core;
+using Minotaur.Db;
 using Minotaur.Providers;
-using Minotaur.Recorders;
-using Minotaur.Streams;
 using NUnit.Framework;
 
 namespace Minotaur.Tests.Providers

@@ -1,7 +1,6 @@
 ﻿using System;
-using System.IO;
 
-namespace Minotaur.Streams
+namespace Minotaur.IO
 {
     /// <inheritdoc />
     /// <summary>

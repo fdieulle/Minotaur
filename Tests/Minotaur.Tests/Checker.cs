@@ -2,6 +2,7 @@
 using Minotaur.Core;
 using Minotaur.Cursors;
 using Minotaur.Native;
+using Minotaur.Pocs.Streams;
 using Minotaur.Providers;
 using Minotaur.Streams;
 using NUnit.Framework;

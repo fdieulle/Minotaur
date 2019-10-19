@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Minotaur.Core;
+using Minotaur.IO;
 using Minotaur.Providers;
-using Minotaur.Streams;
 using NSubstitute;
 using NUnit.Framework;
 
@@ -133,8 +133,7 @@ namespace Minotaur.Tests
                 Directory.Delete(rootFolder, true);
             }
         }
-
-
+        
         private static IEnumerable<FileMetaData> Fmds(IFilePathProvider provider, string symbol, string[] columns, DateTime start, DateTime? end = null)
             => (columns ?? new string[0]).Select(p => Fmd(provider, symbol, p, start, end));
 

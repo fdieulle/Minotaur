@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Minotaur.Core
 {
+    // Todo: Use IAllocator inside
     public unsafe class UnsafeBuffer : IDisposable
     {
         private GCHandle _handle;

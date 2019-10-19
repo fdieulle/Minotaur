@@ -36,7 +36,7 @@ namespace Minotaur.Native
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(null, obj)) return false;
-            return obj is Int32Entry && Equals((Int32Entry)obj);
+            return obj is Int32Entry entry && Equals(entry);
         }
 
         public override int GetHashCode()

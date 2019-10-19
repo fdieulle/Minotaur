@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
 using Minotaur.Codecs;
 using Minotaur.Core;
+using Minotaur.IO;
 using Minotaur.Pocs.Codecs;
 using Minotaur.Pocs.Streams;
 using Minotaur.Streams;

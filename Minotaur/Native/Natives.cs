@@ -25,7 +25,7 @@ namespace Minotaur.Native
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsFongible<T>(this FieldType type)
+        public static bool IsFungible<T>(this FieldType type)
         {
             if (typeof(T) == typeof(int) || typeof(T) == typeof(Int32Entry))
                 return type == FieldType.Int32;

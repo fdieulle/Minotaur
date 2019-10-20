@@ -73,8 +73,8 @@ namespace Minotaur.Db
 
         public IColumnStream CreateColumnWriter(string symbol, ColumnInfo column, DateTime start)
         {
-            var writer = CreateWriter(symbol, column.Name, start);
-            return _columnFactory.CreateStream(column, writer);
+            var tmpFilePath = _filePathProvider.GetTmpFilePath(symbol, column.Name, start);
+            return _columnFactory.CreateStream(column, CreateWriter(tmpFilePath));
         }
 
         public void Commit(string symbol, params ColumnCommit[] columns)
@@ -91,8 +91,8 @@ namespace Minotaur.Db
 
         private void CommitColumn(string symbol, ColumnMeta column, DateTime start, DateTime end)
         {
-            var newFile = _filePathProvider.GetFilePath(symbol, column.Name, start);
-            if (!newFile.FileExists())
+            var tmpFile = _filePathProvider.GetTmpFilePath(symbol, column.Name, start);
+            if (!tmpFile.FileExists())
             {
                 // Todo: LogWarn here No file found to be inserted ! Symbol: {symbol}, Column: {column}, Start: {start:yyyy-MM-dd HH:mm:ss.fff}, Path: {newFile}
                 return;
@@ -103,7 +103,7 @@ namespace Minotaur.Db
             var mergedStart = start;
             var mergedEnd = end;
 
-            // Gets the file to merge with
+            // Gets the files to merge with
             foreach (var entry in column.Timeline.Search(start, end))
             {
                 entriesToRemove.Add(entry.Key);
@@ -126,12 +126,18 @@ namespace Minotaur.Db
 
             if (fileToMerge.Count > 0)
             {
-                var slices = Merge(fileToMerge, new[] { newFile }, symbol, column, mergedStart);
+                // Merge the files
+                var slices = Merge(fileToMerge, new[] { tmpFile }, symbol, column, mergedStart);
                 foreach (var slice in slices)
                     column.Timeline.Insert(slice.Start, slice);
             }
-            else
+            else // No merge to do
+            {
+                // Move the generated file from the tmp folder to the data folder.
+                var newFile = _filePathProvider.GetFilePath(symbol, column.Name, start);
+                tmpFile.MoveFileTo(newFile);
                 column.Timeline.Insert(start, new TimeSlice { Start = start, End = end });
+            }
         }
 
         public void Revert(string symbol, params ColumnCommit[] columns)
@@ -288,7 +294,9 @@ namespace Minotaur.Db
             => new TimeSlice { Start = new DateTime(startTicks), End = new DateTime(endTicks) };
 
         private MinotaurFileStream CreateWriter(string symbol, string column, DateTime start)
-            => new MinotaurFileStream(_filePathProvider.GetFilePath(symbol, column, start));
+            => CreateWriter(_filePathProvider.GetFilePath(symbol, column, start));
+        private MinotaurFileStream CreateWriter(string filePath)
+            => new MinotaurFileStream(filePath);
 
         private MinotaurFileStream CreateReader(string symbol, ColumnMeta column, DateTime start, DateTime end)
             => new MinotaurFileStream(GetFiles(symbol, column, start, end));

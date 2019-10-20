@@ -20,7 +20,7 @@ namespace Minotaur.Meta
 
         public IDisposable OpenMetaToRead(string symbol, out ISymbolMeta symbolMeta)
         {
-            var metaFile = _filePathProvider.GetMetaFilePath(symbol, string.Empty);
+            var metaFile = _filePathProvider.GetMetaFilePath(symbol);
             lock (_symbols) // Protection against other threads
             {
                 var locker = metaFile.FileLock(); // Protection against other processes and machines
@@ -42,7 +42,7 @@ namespace Minotaur.Meta
 
         public IDisposable OpenMetaToWrite(string symbol, out ISymbolMeta symbolMeta)
         {
-            var metaFile = _filePathProvider.GetMetaFilePath(symbol, string.Empty);
+            var metaFile = _filePathProvider.GetMetaFilePath(symbol);
             lock (_symbols) // Protection against other threads
             {
                 var locker = metaFile.FileLock(); // Protection against other processes and machines

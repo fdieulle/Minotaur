@@ -90,26 +90,30 @@ namespace Minotaur.Core
         public static bool FileExists(this string filePath)
             => !string.IsNullOrEmpty(filePath) && File.Exists(filePath);
 
-        public static IEnumerable<string> MoveToTmpFiles(this IEnumerable<string> files)
-            => files.Select(MoveToTmpFile);
-
-        public static string MoveToTmpFile(this string filePath)
+        public static string MoveFileTo(this string filePath, string newFilePath)
         {
             if (!filePath.FileExists()) return filePath;
 
             try
             {
-                var tmpFile = filePath + ".tmp";
-                File.Move(filePath, tmpFile);
-                return tmpFile;
+                GetFolderPath(newFilePath).CreateFolderIfNotExist();
+                File.Move(filePath, newFilePath);
             }
             catch (Exception)
             {
                 // Todo: Log here
             }
 
-            return filePath;
+            return newFilePath;
         }
+
+        public static IEnumerable<string> MoveToTmpFiles(this IEnumerable<string> files)
+            => files.Select(MoveToTmpFile);
+
+        public static string MoveToTmpFile(this string filePath) 
+            => !filePath.FileExists() 
+                ? filePath 
+                : filePath.MoveFileTo(filePath + ".tmp");
 
         public static bool DeleteFile(this string filePath)
         {

@@ -50,7 +50,7 @@ namespace Minotaur.Providers
                     foreach (var stream in CollectAndFetch(symbol, column, start, entry.Key.AddTicks(-1)))
                         yield return stream;
 
-                    Persist(_filePathProvider.GetMetaFilePath(symbol, column), bTree);
+                    Persist(_filePathProvider.GetMetaFilePath(symbol/*, column*/), bTree);
                 }
 
                 var reader = _streamFactory.CreateReader(entry.Value.FilePath);
@@ -64,7 +64,7 @@ namespace Minotaur.Providers
                 foreach (var stream in CollectAndFetch(symbol, column, start, end))
                     yield return stream;
 
-                Persist(_filePathProvider.GetMetaFilePath(symbol, column), bTree);
+                Persist(_filePathProvider.GetMetaFilePath(symbol/*, column*/), bTree);
             }
         }
 
@@ -91,7 +91,7 @@ namespace Minotaur.Providers
             var key = GetKey(symbol, column);
             if (!_bTrees.TryGetValue(key, out var bTree))
             {
-                bTree = LoadBTree(_filePathProvider.GetMetaFilePath(symbol, column)) ?? CreateBTree();
+                bTree = LoadBTree(_filePathProvider.GetMetaFilePath(symbol/*, column*/)) ?? CreateBTree();
                 _bTrees.Add(key, bTree);
             }
             return bTree;

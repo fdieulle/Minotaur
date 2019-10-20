@@ -24,6 +24,7 @@ Distribution framework for timeseries data access and distributed tasks
 
 * Move Meta data into a dedicated service and manage a synchronization point here to support multi threads and multi processes.
 * Complete the FileTimeSeries DB implementation by implementing Insert and Delete methods based on recorder and cursors.
+* Implement and use a multi-versions codec. Maybe found an entry point to let the user defines its own.
 * Raise a scan regularly to merge the timeseries on persisted files and optimize the btree and number of files.
 * Propose a remote implementation.
 * Propose a distributed implementation.

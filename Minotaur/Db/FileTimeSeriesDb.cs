@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Xml.Serialization;
 using Minotaur.Codecs;
 using Minotaur.Core;
 using Minotaur.Cursors;
@@ -22,27 +21,30 @@ namespace Minotaur.Db
 
         private readonly IFilePathProvider _filePathProvider;
         private readonly IAllocator _allocator;
-        private readonly Dictionary<string, ColumnTimeSlices> _columns = new Dictionary<string, ColumnTimeSlices>();
+        private readonly MetaManager _metaManager;
         private readonly ColumnStreamFactory<MinotaurFileStream> _columnFactory = new ColumnStreamFactory<MinotaurFileStream>();
 
         public FileTimeSeriesDb(IFilePathProvider filePathProvider, IAllocator allocator)
         {
             _filePathProvider = filePathProvider;
             _allocator = allocator;
+            _metaManager = new MetaManager(filePathProvider);
         }
 
         #region Implementation of ITimeSeriesDb
 
         public ICursor GetCursor(string symbol, DateTime start, DateTime? end = null, string[] columns = null)
         {
-            columns = columns ?? GetAllColumns(symbol);
             end = end ?? start.AddDays(1);
 
             var cursors = new Dictionary<string, IColumnCursor>();
-            foreach (var column in columns.Select(p => GetMeta(symbol, p)))
+            using (_metaManager.OpenMetaToRead(symbol, out var meta))
             {
-                var stream = CreateReader(symbol, column.Name, start, end.Value);
-                cursors[column.Name] = _columnFactory.CreateCursor(column, stream, _allocator);
+                foreach (var column in meta.GetColumns(columns))
+                {
+                    var stream = CreateReader(symbol, column, start, end.Value);
+                    cursors[column.Name] = _columnFactory.CreateCursor(column, stream, _allocator);
+                }
             }
 
             return new TimeSeriesCursor(cursors);
@@ -58,9 +60,11 @@ namespace Minotaur.Db
 
         public void Delete(string symbol, DateTime start, DateTime end, string[] columns = null)
         {
-            columns = columns ?? GetAllColumns(symbol);
-            foreach (var column in columns)
-                Delete(symbol, column, start, end);
+            using (_metaManager.OpenMetaToWrite(symbol, out var meta))
+            {
+                foreach (var column in meta.GetColumns(columns))
+                    Delete(symbol, column, start, end);
+            }
         }
 
         #endregion
@@ -73,7 +77,19 @@ namespace Minotaur.Db
             return _columnFactory.CreateStream(column, writer);
         }
 
-        public void CommitColumn(string symbol, ColumnInfo column, DateTime start, DateTime end)
+        public void Commit(string symbol, params ColumnCommit[] columns)
+        {
+            using (_metaManager.OpenMetaToWrite(symbol, out var meta))
+            {
+                foreach (var column in columns)
+                {
+                    var columnMeta = meta.GetOrCreateColumn(column.Name, column.Type);
+                    CommitColumn(symbol, columnMeta, column.Start, column.End);
+                }
+            }
+        }
+
+        private void CommitColumn(string symbol, ColumnMeta column, DateTime start, DateTime end)
         {
             var newFile = _filePathProvider.GetFilePath(symbol, column.Name, start);
             if (!newFile.FileExists())
@@ -82,67 +98,62 @@ namespace Minotaur.Db
                 return;
             }
 
-            var metaFile = _filePathProvider.GetMetaFilePath(symbol, string.Empty);
-            using (metaFile.FileLock())
+            var entriesToRemove = new List<DateTime>();
+            var fileToMerge = new List<string>();
+            var mergedStart = start;
+            var mergedEnd = end;
+
+            // Gets the file to merge with
+            foreach (var entry in column.Timeline.Search(start, end))
             {
-                var meta = GetMeta(symbol, column.Name, column.Type);
+                entriesToRemove.Add(entry.Key);
 
-                var entriesToRemove = new List<DateTime>();
-                var fileToMerge = new List<string>();
-                var mergedStart = start;
-                var mergedEnd = end;
-
-                // Gets the file to merge with
-                foreach (var entry in meta.BTree.Search(start, end))
+                var filePath = _filePathProvider.GetFilePath(symbol, column.Name, entry.Key);
+                if (!filePath.FileExists())
                 {
-                    entriesToRemove.Add(entry.Key);
-
-                    var filePath = _filePathProvider.GetFilePath(symbol, column.Name, entry.Key);
-                    if (!filePath.FileExists())
-                    {
-                        // Todo: LogInfo: The file has been deleted so we remove the entry {entry.Value}, Path: {filePath}
-                        continue;
-                    }
-                    
-                    fileToMerge.Add(filePath);
-                    mergedStart = Time.Min(mergedStart, entry.Key);
-                    mergedEnd = Time.Max(mergedEnd, entry.Value.End);
+                    // Todo: LogInfo: The file has been deleted so we remove the entry {entry.Value}, Path: {filePath}
+                    continue;
                 }
 
-                // Remove all entries that will be merged
-                foreach (var entry in entriesToRemove)
-                    meta.BTree.Delete(entry);
-
-                if (fileToMerge.Count > 0)
-                {
-                    var slices = Merge(fileToMerge, new[] { newFile }, symbol, meta, mergedStart);
-                    foreach (var slice in slices)
-                        meta.BTree.Insert(slice.Start, slice);
-                }
-                else
-                    meta.BTree.Insert(start, new TimeSlice { Start = start, End = end });
-
-                PersistMeta(symbol, meta);
+                fileToMerge.Add(filePath);
+                mergedStart = Time.Min(mergedStart, entry.Key);
+                mergedEnd = Time.Max(mergedEnd, entry.Value.End);
             }
+
+            // Remove all entries that will be merged
+            foreach (var entry in entriesToRemove)
+                column.Timeline.Delete(entry);
+
+            if (fileToMerge.Count > 0)
+            {
+                var slices = Merge(fileToMerge, new[] { newFile }, symbol, column, mergedStart);
+                foreach (var slice in slices)
+                    column.Timeline.Insert(slice.Start, slice);
+            }
+            else
+                column.Timeline.Insert(start, new TimeSlice { Start = start, End = end });
         }
 
-        public void RevertColumn(string symbol, string column, DateTime start) 
-            => _filePathProvider.GetFilePath(symbol, column, start)
-                .DeleteFile();
+        public void Revert(string symbol, params ColumnCommit[] columns)
+        {
+            // We don't need to lock the meta here because nothing has been commit
+            // And the recorder works on a temporary path.
+            foreach(var column in columns)
+                _filePathProvider.GetFilePath(symbol, column.Name, column.Start)
+                    .DeleteFile();
+        }
 
         #endregion
 
-        public void Delete(string symbol, string column, DateTime start, DateTime end)
+        public void Delete(string symbol, ColumnMeta column, DateTime start, DateTime end)
         {
-            var meta = GetMeta(symbol, column);
-
             var filesForDeletion = new List<string>();
-            var entries = meta.BTree.Search(start, end).ToList();
+            var entries = column.Timeline.Search(start, end).ToList();
 
             if (entries.Count == 0) return;
 
             var firstTimestamp = start;
-            var file = _filePathProvider.GetFilePath(symbol, column, entries[0].Key);
+            var file = _filePathProvider.GetFilePath(symbol, column.Name, entries[0].Key);
             if (file.FileExists())
             {
                 filesForDeletion.Add(file);
@@ -151,7 +162,7 @@ namespace Minotaur.Db
             }
             if (entries.Count > 1)
             {
-                file = _filePathProvider.GetFilePath(symbol, column, entries[entries.Count - 1].Key);
+                file = _filePathProvider.GetFilePath(symbol, column.Name, entries[entries.Count - 1].Key);
                 if (file.FileExists())
                 {
                     filesForDeletion.Add(file);
@@ -161,24 +172,21 @@ namespace Minotaur.Db
 
                 // Delete files
                 for (var i = 1; i < entries.Count - 1; i++)
-                    _filePathProvider.GetFilePath(symbol, column, entries[i].Key).DeleteFile();
+                    _filePathProvider.GetFilePath(symbol, column.Name, entries[i].Key).DeleteFile();
             }
 
             if (filesForDeletion.Count > 0)
             {
-                Merge(filesForDeletion, Enumerable.Empty<string>(), symbol, meta, firstTimestamp,
+                Merge(filesForDeletion, Enumerable.Empty<string>(), symbol, column, firstTimestamp,
                     ticks => ticks < start.Ticks && ticks > end.Ticks);
             }
         }
 
-        private IEnumerable<string> GetFiles(string symbol, string column, DateTime start, DateTime end)
+        private IEnumerable<string> GetFiles(string symbol, ColumnMeta column, DateTime start, DateTime end)
         {
-            var meta = GetMeta(symbol, column);
-            foreach (var entry in meta.BTree.Search(start, end))
-                yield return _filePathProvider.GetFilePath(symbol, column, entry.Key);
+            foreach (var entry in column.Timeline.Search(start, end))
+                yield return _filePathProvider.GetFilePath(symbol, column.Name, entry.Key);
         }
-
-        private static string GetKey(string symbol, string column) => $"{symbol}_{column}";
 
         private List<TimeSlice> Merge(IEnumerable<string> x, IEnumerable<string> y, string symbol, ColumnInfo column, DateTime start, Func<long, bool> filter = null)
         {
@@ -282,99 +290,7 @@ namespace Minotaur.Db
         private MinotaurFileStream CreateWriter(string symbol, string column, DateTime start)
             => new MinotaurFileStream(_filePathProvider.GetFilePath(symbol, column, start));
 
-        private MinotaurFileStream CreateReader(string symbol, string column, DateTime start, DateTime end)
+        private MinotaurFileStream CreateReader(string symbol, ColumnMeta column, DateTime start, DateTime end)
             => new MinotaurFileStream(GetFiles(symbol, column, start, end));
-
-        #region Meta persistency
-
-        // ReSharper disable once StaticMemberInGenericType
-        private static readonly XmlSerializer serializer = new XmlSerializer(typeof(SymbolMeta));
-
-        private ColumnTimeSlices GetMeta(string symbol, string column, FieldType type = FieldType.Unknown)
-        {
-            if (!_columns.TryGetValue(GetKey(symbol, column), out var timeSlices))
-            {
-                var metaFilePath = _filePathProvider.GetMetaFilePath(symbol, string.Empty);
-                using (metaFilePath.FileLock())
-                {
-                    var meta = serializer.Deserialize<SymbolMeta>(metaFilePath);
-
-                    if (meta?.Columns != null)
-                    {
-                        foreach (var columnMeta in meta.Columns)
-                            _columns[GetKey(symbol, columnMeta.Name)] = new ColumnTimeSlices(columnMeta);
-                    }
-
-                    var key = GetKey(symbol, column);
-                    if (!_columns.TryGetValue(key, out timeSlices))
-                    {
-                        if (type == FieldType.Unknown)
-                            throw new InvalidDataException($"Column type Unknown isn't supported and has to be defined for {column}.");
-
-                        _columns.Add(key, timeSlices = CreateColumnStub(column, type));
-                    }
-                }
-            }
-
-            if (type != FieldType.Unknown && timeSlices.Type != type)
-                throw new InvalidDataException($"Column type doesn't match for {column}. Request for {type} but it's store as {timeSlices.Type}");
-
-            return timeSlices;
-        }
-        
-        private static ColumnTimeSlices CreateColumnStub(string name, FieldType type) 
-            => new ColumnTimeSlices(new ColumnMeta { Name = name, Type = type });
-
-        private void PersistMeta(string symbol, ColumnTimeSlices column)
-        {
-            var metaFilePath = _filePathProvider.GetMetaFilePath(symbol, string.Empty);
-            using (metaFilePath.FileLock())
-            {
-                var meta = serializer.Deserialize<SymbolMeta>(metaFilePath) ?? new SymbolMeta { Symbol = symbol };
-
-                meta.Columns = meta.Columns?
-                                   .Where(p => !string.Equals(p.Name, column.Name))
-                                   .ToList() ?? new List<ColumnMeta>();
-                meta.Columns.Add(CreateColumnMeta(column));
-
-                serializer.Serialize(metaFilePath, meta);
-            }
-        }
-
-        private static ColumnMeta CreateColumnMeta(ColumnTimeSlices column)
-            => new ColumnMeta
-            {
-                Name = column.Name,
-                Type = column.Type,
-                Timeline = column.BTree.Select(p => p.Value).ToList()
-            };
-
-        private string[] GetAllColumns(string symbol)
-        {
-            var metaFilePath = _filePathProvider.GetMetaFilePath(symbol, string.Empty);
-            using (metaFilePath.FileLock())
-            {
-                return serializer.Deserialize<SymbolMeta>(metaFilePath)
-                           ?.Columns?.Select(p => p.Name).ToArray() ?? new string[0];
-            }
-        }
-
-        #endregion
-
-        private class ColumnTimeSlices : ColumnInfo
-        {
-            public BTree<DateTime, TimeSlice> BTree { get; } = new BTree<DateTime, TimeSlice>(50);
-
-            public ColumnTimeSlices(ColumnMeta meta)
-            {
-                Name = meta.Name;
-                Type = meta.Type;
-                if (meta.Timeline != null)
-                {
-                    foreach (var slice in meta.Timeline.Where(p => p != null))
-                        BTree.Insert(slice.Start, slice);
-                }
-            }
-        }
     }
 }

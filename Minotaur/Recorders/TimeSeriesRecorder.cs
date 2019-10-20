@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Minotaur.Core;
 using Minotaur.Db;
-using Minotaur.Meta;
 using Minotaur.Native;
 using Minotaur.Streams;
 
@@ -48,8 +48,9 @@ namespace Minotaur.Recorders
             {
                 column.Stream?.Flush();
                 column.Stream?.Dispose();
-                _dbUpdater.CommitColumn(_symbol, column, column.Start, column.End);
             }
+
+            _dbUpdater.Commit(_symbol, _columns.Values.Cast<ColumnCommit>().ToArray());
 
             _columns.Clear();
         }
@@ -57,10 +58,9 @@ namespace Minotaur.Recorders
         public void Revert()
         {
             foreach (var column in _columns.Values)
-            {
                 column.Stream?.Dispose();
-                _dbUpdater.RevertColumn(_symbol, column.Name, column.Start);
-            }
+
+            _dbUpdater.Revert(_symbol, _columns.Values.Cast<ColumnCommit>().ToArray());
 
             _columns.Clear();
         }
@@ -124,16 +124,11 @@ namespace Minotaur.Recorders
 
         #endregion
 
-        private class Column : ColumnInfo
+        private class Column : ColumnCommit
         {
-            public DateTime Start { get; }
-            public DateTime End { get; set; }
             public IColumnStream Stream { get; set; }
 
             public Column(DateTime start) => Start = start;
-
-            public override string ToString() 
-                => $"{base.ToString()}, [{Start:yyyy-MM-dd HH:mm:ss.fff}; {End:yyyy-MM-dd HH:mm:ss.fff}]";
         }
     }
 }

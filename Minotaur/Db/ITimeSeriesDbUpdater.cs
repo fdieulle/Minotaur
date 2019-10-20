@@ -1,6 +1,5 @@
 ﻿using System;
 using Minotaur.Meta;
-using Minotaur.Providers;
 using Minotaur.Streams;
 
 namespace Minotaur.Db
@@ -8,7 +7,7 @@ namespace Minotaur.Db
     public interface ITimeSeriesDbUpdater
     {
         IColumnStream CreateColumnWriter(string symbol, ColumnInfo column, DateTime start);
-        void CommitColumn(string symbol, ColumnInfo column, DateTime start, DateTime end);
-        void RevertColumn(string symbol, string column, DateTime start);
+        void Commit(string symbol, ColumnCommit[] columns);
+        void Revert(string symbol, ColumnCommit[] columns);
     }
 }

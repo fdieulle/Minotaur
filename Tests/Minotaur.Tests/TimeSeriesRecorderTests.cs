@@ -6,7 +6,6 @@ using Minotaur.Core;
 using Minotaur.Db;
 using Minotaur.Meta;
 using Minotaur.Native;
-using Minotaur.Providers;
 using Minotaur.Recorders;
 using Minotaur.Streams;
 using NSubstitute;
@@ -130,40 +129,37 @@ namespace Minotaur.Tests
                 Arg.Any<string>(),
                 Arg.Any<ColumnInfo>(),
                 Arg.Any<DateTime>());
-            mockDbUpdater.DidNotReceive().CommitColumn(
+            mockDbUpdater.DidNotReceive().Commit(
                 Arg.Any<string>(),
-                Arg.Any<ColumnInfo>(),
-                Arg.Any<DateTime>(),
-                Arg.Any<DateTime>());
-            mockDbUpdater.DidNotReceive().RevertColumn(
+                Arg.Any<ColumnCommit[]>());
+            mockDbUpdater.DidNotReceive().Revert(
                 Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<DateTime>());
+                Arg.Any<ColumnCommit[]>());
 
             recorder.Commit();
 
             foreach (var pair in streams)
                 pair.Value.CheckCallsThenClear(1, 0, 1);
-            Check(mockDbUpdater, symbol, intColumn1, FieldType.Int32, "08:00:00", "08:00:03");
-            Check(mockDbUpdater, symbol, intColumn2, FieldType.Int32, "08:00:00", "08:00:02");
-            Check(mockDbUpdater, symbol, intColumn3, FieldType.Int32, "08:00:00", "08:00:01");
-            Check(mockDbUpdater, symbol, longColumn, FieldType.Int64, "08:00:00", "08:00:01");
-            Check(mockDbUpdater, symbol, floatColumn, FieldType.Float, "08:00:00", "08:00:02");
-            Check(mockDbUpdater, symbol, doubleColumn, FieldType.Double, "08:00:00", "08:00:01");
+            var columns = new[]
+            {
+                C(intColumn1, FieldType.Int32, "08:00:00", "08:00:03"),
+                C(intColumn2, FieldType.Int32, "08:00:00", "08:00:02"),
+                C(intColumn3, FieldType.Int32, "08:00:00", "08:00:01"),
+                C(longColumn, FieldType.Int64, "08:00:00", "08:00:01"),
+                C(floatColumn, FieldType.Float, "08:00:00", "08:00:02"),
+                C(doubleColumn, FieldType.Double, "08:00:00", "08:00:01")
+            };
 
-            mockDbUpdater.Received(6).CommitColumn(
-                Arg.Any<string>(),
-                Arg.Any<ColumnInfo>(),
-                Arg.Any<DateTime>(),
-                Arg.Any<DateTime>());
+            mockDbUpdater.Received(1).Commit(
+                Arg.Is<string>(i => i == symbol),
+                Arg.Is<ColumnCommit[]>(i => IsEqual(i, columns)));
             mockDbUpdater.DidNotReceive().CreateColumnWriter(
                 Arg.Any<string>(),
                 Arg.Any<ColumnInfo>(),
                 Arg.Any<DateTime>());
-            mockDbUpdater.DidNotReceive().RevertColumn(
+            mockDbUpdater.DidNotReceive().Revert(
                 Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<DateTime>());
+                Arg.Any<ColumnCommit[]>());
         }
 
         [Test]
@@ -216,21 +212,35 @@ namespace Minotaur.Tests
 
             recorder.Commit();
             mockStream1.CheckCallsThenClear(1, 0, 1);
-            mockDbUpdater.Received(1).CommitColumn(
+
+            var columns = new[] {C(column, FieldType.Int32, "08:00:00", "08:00:02")};
+            mockDbUpdater.Received(1).Commit(
                 Arg.Is<string>(i => i == symbol),
-                Arg.Is<ColumnInfo>(i => i.Name == column && i.Type == FieldType.Int32),
-                Arg.Is<DateTime>(i => i == "08:00:00".ToDateTime()),
-                Arg.Is<DateTime>(i => i == "08:00:02".ToDateTime()));
+                Arg.Is<ColumnCommit[]>(i => IsEqual(i, columns)));
         }
 
-        private static void Check(ITimeSeriesDbUpdater mock, string symbol, string column, FieldType type, string start, string end)
+        private static bool IsEqual(ColumnCommit[] x, ColumnCommit[] y)
         {
-            mock.Received(1).CommitColumn(
-                Arg.Is<string>(i => i == symbol),
-                Arg.Is<ColumnInfo>(i => i.Name == column && i.Type == type),
-                Arg.Is<DateTime>(i => i == start.ToDateTime()),
-                Arg.Is<DateTime>(i => i == end.ToDateTime()));
+            if (x.Length != y.Length) return false;
+
+            var ox = x.OrderBy(p => p.Name).ToArray();
+            var oy = y.OrderBy(p => p.Name).ToArray();
+
+            for (var i = 0; i < ox.Length; i++)
+            {
+                var xx = ox[i];
+                var yy = oy[i];
+                if (xx.Name != yy.Name) return false;
+                if (xx.Type != yy.Type) return false;
+                if (xx.Start != yy.Start) return false;
+                if (xx.End != yy.End) return false;
+            }
+
+            return true;
         }
+
+        private static ColumnCommit C(string column, FieldType type, string start, string end)
+            => new ColumnCommit {Name = column, Type = type, Start = start.ToDateTime(), End = end.ToDateTime() };
 
         [DebuggerStepThrough]
         private static Int32Entry E(string timestamp, int value)

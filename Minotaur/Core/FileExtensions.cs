@@ -59,6 +59,7 @@ namespace Minotaur.Core
         }
 
         // Todo: Lock the file when it's write as when it's read => 2 modes
+        // Todo: the goal is to supports many reads but only 1 write
         public static IDisposable FileLock(this string filePath)
         {
             if (!filePath.FileSpinWait()) return AnonymousDisposable.Empty;

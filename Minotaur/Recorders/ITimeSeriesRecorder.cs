@@ -4,7 +4,7 @@ namespace Minotaur.Recorders
 {
     public interface ITimeSeriesRecorder : IDisposable
     {
-        IRowRecorder<ITimeSeriesRecorder> AddRow(DateTime timestamp);
+        IRowRecorder AddRow(DateTime timestamp);
 
         void Commit();
 

@@ -17,7 +17,7 @@ namespace Minotaur.Db
     public class FileTimeSeriesDb : ITimeSeriesDb, ITimeSeriesDbUpdater
     {
         private const int STREAM_CAPACITY = 8192;
-        private const int OPTIMAL_FILE_SIZE_MB = 500;
+        private const int OPTIMAL_FILE_SIZE_MB = 500000000;
 
         private readonly IFilePathProvider _filePathProvider;
         private readonly IAllocator _allocator;
@@ -55,7 +55,39 @@ namespace Minotaur.Db
 
         public void Insert(string symbol, Dictionary<string, Array> data)
         {
-            throw new NotImplementedException();
+            data = data.ToDictionary(p => p.Key, p => p.Value); // Clone
+
+            if (data.TryGetValue("timestamp", out var timestamps))
+            {
+                data.Remove("timestamp");
+
+                DateTime[] timeline;
+                if (timestamps is DateTime[] times)
+                    timeline = times;
+                else if (timestamps is long[] longs)
+                    timeline = longs.Select(p => new DateTime(p)).ToArray();
+                else throw new InvalidDataException($"The timestamp column has to be type of DateTime[] or long[]");
+
+                // Sanity check
+                var columns = new List<IArrayRecorder>();
+                foreach (var pair in data)
+                {
+                    if(pair.Value.Length != timeline.Length)
+                        throw new InvalidDataException($"The number of rows for the column {pair.Key} has to be equals to the number of timestamps");
+                    columns.Add(pair.MakeRecorder());
+                }
+
+                var recorder = CreateRecorder(symbol);
+                for (var i = 0; i < timeline.Length; i++)
+                {
+                    var rowRecorder = recorder.AddRow(timeline[i]);
+
+                    foreach (var column in columns)
+                        column.Record(rowRecorder, i);
+                }
+
+                recorder.Commit();
+            }
         }
 
         public void Delete(string symbol, DateTime start, DateTime end, string[] columns = null)
@@ -104,7 +136,7 @@ namespace Minotaur.Db
             var mergedEnd = end;
 
             // Gets the files to merge with
-            foreach (var entry in column.Timeline.Search(start, end))
+            foreach (var entry in column.Search(start, end))
             {
                 entriesToRemove.Add(entry.Key);
 
@@ -122,21 +154,21 @@ namespace Minotaur.Db
 
             // Remove all entries that will be merged
             foreach (var entry in entriesToRemove)
-                column.Timeline.Delete(entry);
+                column.Delete(entry);
 
             if (fileToMerge.Count > 0)
             {
                 // Merge the files
                 var slices = Merge(fileToMerge, new[] { tmpFile }, symbol, column, mergedStart);
                 foreach (var slice in slices)
-                    column.Timeline.Insert(slice.Start, slice);
+                    column.Insert(slice.Start, slice);
             }
             else // No merge to do
             {
                 // Move the generated file from the tmp folder to the data folder.
                 var newFile = _filePathProvider.GetFilePath(symbol, column.Name, start);
                 tmpFile.MoveFileTo(newFile);
-                column.Timeline.Insert(start, new TimeSlice { Start = start, End = end });
+                column.Insert(start, new TimeSlice { Start = start, End = end });
             }
         }
 
@@ -154,7 +186,7 @@ namespace Minotaur.Db
         public void Delete(string symbol, ColumnMeta column, DateTime start, DateTime end)
         {
             var filesForDeletion = new List<string>();
-            var entries = column.Timeline.Search(start, end).ToList();
+            var entries = column.Search(start, end).ToList();
 
             if (entries.Count == 0) return;
 
@@ -190,8 +222,23 @@ namespace Minotaur.Db
 
         private IEnumerable<string> GetFiles(string symbol, ColumnMeta column, DateTime start, DateTime end)
         {
-            foreach (var entry in column.Timeline.Search(start, end))
+            var revision = column.Revision;
+            var lastEnd = start;
+            foreach (var entry in column.Search(start, end).ToList())
+            {
+                if (_metaManager.HasChanged(symbol) || column.HasChanged(revision))
+                {
+                    using (_metaManager.OpenMetaToRead(symbol, out var symbolMeta))
+                        column = symbolMeta.GetOrCreateColumn(column.Name);
+                    
+                    foreach (var file in GetFiles(symbol, column, lastEnd, end))
+                        yield return file;
+                    break;
+                }
+
+                lastEnd = entry.Value.End;
                 yield return _filePathProvider.GetFilePath(symbol, column.Name, entry.Key);
+            }
         }
 
         private List<TimeSlice> Merge(IEnumerable<string> x, IEnumerable<string> y, string symbol, ColumnInfo column, DateTime start, Func<long, bool> filter = null)

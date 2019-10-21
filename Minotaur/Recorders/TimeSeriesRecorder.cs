@@ -9,7 +9,7 @@ using Minotaur.Streams;
 
 namespace Minotaur.Recorders
 {
-    public unsafe class TimeSeriesRecorder : ITimeSeriesRecorder, IRowRecorder<ITimeSeriesRecorder>
+    public unsafe class TimeSeriesRecorder : ITimeSeriesRecorder, IRowRecorder
     {
         private readonly string _symbol;
         private readonly ITimeSeriesDbUpdater _dbUpdater;
@@ -32,7 +32,7 @@ namespace Minotaur.Recorders
 
         #region Implementation of ITimeSeriesRecorder
 
-        public IRowRecorder<ITimeSeriesRecorder> AddRow(DateTime timestamp)
+        public IRowRecorder AddRow(DateTime timestamp)
         {
             if(timestamp < _currentTimestamp) 
                 throw new InvalidDataException($"Timestamp has to be greater than previous. Timestamp: {timestamp:yyyy-MM-dd HH:mm:ss.fffff}, Previous: {_currentTimestamp:yyyy-MM-dd HH:mm:ss.fffff}");
@@ -81,9 +81,7 @@ namespace Minotaur.Recorders
 
         #region Implementation of IRowRecorder
 
-        public ITimeSeriesRecorder Parent => this;
-
-        public IRowRecorder<ITimeSeriesRecorder> Record<T>(string column, T value) where T : unmanaged
+        public IRowRecorder Record<T>(string column, T value) where T : unmanaged
         {
             if (column == null) throw new ArgumentException("Column name can't be null", nameof(column));
 

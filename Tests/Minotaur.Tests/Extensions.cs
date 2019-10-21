@@ -217,7 +217,7 @@ namespace Minotaur.Tests
         }
 
         [DebuggerStepThrough]
-        public static IRowRecorder<ITimeSeriesRecorder> AddRow(this ITimeSeriesRecorder recorder, string timestamp)
+        public static IRowRecorder AddRow(this ITimeSeriesRecorder recorder, string timestamp)
             => recorder.AddRow(timestamp.ToDateTime());
 
         public static unsafe void CopyBlock(byte* src, byte* dst, int length, int take = int.MaxValue, int skip = 0)
@@ -232,5 +232,9 @@ namespace Minotaur.Tests
                 dst += take + skip;
             }
         }
+
+        [DebuggerStepThrough]
+        public static DateTime MoveNext(this ICursor cursor, string timestamp)
+            => cursor.MoveNext(timestamp.ToDateTime());
     }
 }

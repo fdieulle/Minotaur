@@ -18,6 +18,29 @@ namespace Minotaur.Meta
             _filePathProvider = filePathProvider;
         }
 
+        public bool HasChanged(string symbol)
+        {
+            var metaFile = _filePathProvider.GetMetaFilePath(symbol);
+            lock (_symbols) // Protection against other threads
+            {
+                using (metaFile.FileLock()) // Protection against other processes and machines
+                {
+                    if (!_symbols.TryGetValue(symbol, out var meta))
+                        _symbols.Add(symbol, meta = new SymbolMeta(symbol));
+
+                    var lastWriteTime = File.GetLastWriteTimeUtc(metaFile);
+                    if (lastWriteTime > meta.LastWriteTimeUtc)
+                    {
+                        meta.Restore(metaFile);
+                        meta.LastWriteTimeUtc = lastWriteTime;
+                        return true;
+                    }
+
+                    return false;
+                }
+            }
+        }
+
         public IDisposable OpenMetaToRead(string symbol, out ISymbolMeta symbolMeta)
         {
             var metaFile = _filePathProvider.GetMetaFilePath(symbol);

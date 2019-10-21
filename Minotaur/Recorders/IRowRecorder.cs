@@ -1,9 +1,7 @@
 ﻿namespace Minotaur.Recorders
 {
-    public interface IRowRecorder<out TParent>
+    public interface IRowRecorder
     {
-        TParent Parent { get; }
-
-        IRowRecorder<TParent> Record<T>(string column, T value) where T : unmanaged;
+        IRowRecorder Record<T>(string column, T value) where T : unmanaged;
     }
 }

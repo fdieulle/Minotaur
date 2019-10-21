@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Minotaur.Native;
 
 namespace Minotaur.Tests
@@ -22,6 +23,14 @@ namespace Minotaur.Tests
             return data;
         }
 
+        public static double[] CreateRandomDouble(int count)
+        {
+            var data = new double[count];
+            for (var i = 0; i < data.Length; i++)
+                data[i] = random.NextDouble();
+            return data;
+        }
+
         public static long[] CreateTimelineTicks(int count, double intervalMs = 233)
         {
             var ticks = new long[count];
@@ -32,6 +41,20 @@ namespace Minotaur.Tests
                 now = now.AddMilliseconds(intervalMs);
             }
             return ticks;
+        }
+
+        public static DateTime[] CreateRandomDateTime(DateTime start, DateTime end, double intervalMs = 233)
+        {
+            var list = new List<DateTime>();
+
+            while (start < end)
+            {
+                list.Add(start);
+                start = start.AddMilliseconds(random.NextDouble() * 2 * intervalMs);
+            }
+
+            list.Add(end);
+            return list.ToArray();
         }
 
         public static Int32Entry[] CreateInt32Chunk(int count, DateTime? start = null, int valueQo = 1000, double percentOfFill = 1.0, int ticksIntervalMs = 100)

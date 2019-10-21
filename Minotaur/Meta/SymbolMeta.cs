@@ -65,12 +65,9 @@ namespace Minotaur.Meta
             var dto = new SymbolMetaDto
             {
                 Symbol = Symbol,
-                Columns = _columns.Values.Select(p => new ColumnMetaDto
-                {
-                    Name = p.Name,
-                    Type = p.Type,
-                    Timeline = p.Timeline.Select(t => t.Value).ToList()
-                }).ToList()
+                Columns = _columns.Values
+                    .Select(p => p.ToDto())
+                    .ToList()
             };
 
             serializer.Serialize(filePath, dto);

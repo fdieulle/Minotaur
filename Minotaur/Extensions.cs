@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml.Serialization;
+using Minotaur.Recorders;
 using Minotaur.Streams;
 
 namespace Minotaur
@@ -66,6 +69,26 @@ namespace Minotaur
             return default;
         }
 
-        #endregion 
+        #endregion
+
+        #region Recorders
+
+        public static IArrayRecorder MakeRecorder(this KeyValuePair<string, Array> pair)
+            => MakeRecorder(pair.Value, pair.Key);
+
+        public static IArrayRecorder MakeRecorder(this Array array, string column)
+        {
+            var elementType = array.GetType().GetElementType();
+            return (IArrayRecorder)makeGenericRecorder.MakeGenericMethod(elementType)
+                .Invoke(null, new object[] { column, array });
+        }
+
+        private static readonly MethodInfo makeGenericRecorder = MethodBase.GetCurrentMethod()
+            .DeclaringType?.GetMethod("MakeGenericRecorder", BindingFlags.NonPublic | BindingFlags.Static);
+        private static IArrayRecorder MakeGenericRecorder<T>(string column, T[] array)
+            where T : unmanaged 
+            => new ArrayRecorder<T>(column, array);
+
+        #endregion
     }
 }

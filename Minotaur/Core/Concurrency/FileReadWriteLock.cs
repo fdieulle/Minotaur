@@ -60,6 +60,9 @@ namespace Minotaur.Core.Concurrency
             // But it can still have some older readers on the file.
             _locker = _filePath.FileLock();
 
+            // Stop here if the file doesn't exist yet or anymore.
+            if (!_filePath.FileExists()) return;
+
             var creationUtc = File.GetCreationTimeUtc(_filePath);
             var lastAccessUtc = File.GetLastWriteTimeUtc(_filePath);
 
@@ -85,10 +88,13 @@ namespace Minotaur.Core.Concurrency
         protected override void OnReleaseWrite()
         {
             // Be sure that the check points are consistent by overwrite them
-            var utcNow = DateTime.UtcNow;
-            File.SetCreationTimeUtc(_filePath, utcNow);
-            File.SetLastWriteTimeUtc(_filePath, utcNow);
-
+            if (_filePath.FileExists())
+            {
+                var utcNow = DateTime.UtcNow;
+                File.SetCreationTimeUtc(_filePath, utcNow);
+                File.SetLastWriteTimeUtc(_filePath, utcNow);
+            }
+            
             _locker?.Dispose();
         }
 
@@ -98,6 +104,9 @@ namespace Minotaur.Core.Concurrency
             {
                 using (_filePath.FileLock())
                 {
+                    // Stop here if the file doesn't exist yet or anymore.
+                    if (!_filePath.FileExists()) break;
+
                     // Read counter
                     var lastAccessUtc = File.GetLastWriteTimeUtc(_filePath);
 
@@ -121,6 +130,9 @@ namespace Minotaur.Core.Concurrency
         {
             using (_filePath.FileLock())
             {
+                // Stop here if the file doesn't exist yet or anymore.
+                if (!_filePath.FileExists()) return;
+
                 // Read counter
                 var lastAccessUtc = File.GetLastWriteTimeUtc(_filePath);
                 // Decrement counter

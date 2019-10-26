@@ -5,9 +5,9 @@ namespace Minotaur.Core.Concurrency
 {
     public class ReadWriteLock : IDisposable
     {
-        private readonly Semaphore _resourceAccess = new Semaphore(0, 1); // like a lock Todo: See to replace with Monitor.Enter/Exit
-        private readonly Semaphore _readCountAccess = new Semaphore(0, 1); // like a lock Todo: See to replace with Monitor.Enter/Exit
-        private readonly Semaphore _serviceQueue = new Semaphore(0, 1); // like a lock Todo: See to replace with Monitor.Enter/Exit
+        private readonly Semaphore _resourceAccess = new Semaphore(1, 1); // like a lock Todo: See to replace with Monitor.Enter/Exit
+        private readonly Semaphore _readCountAccess = new Semaphore(1, 1); // like a lock Todo: See to replace with Monitor.Enter/Exit
+        private readonly Semaphore _serviceQueue = new Semaphore(1, 1); // like a lock Todo: See to replace with Monitor.Enter/Exit
         private readonly Disposable _releaseRead;
         private readonly Disposable _releaseWrite;
         private int _readCount;

@@ -36,10 +36,10 @@ namespace Minotaur.Core
             return new FileInfo(filePath).Directory?.FullName;
         }
 
-        public static bool FileSpinWait(this string filePath, int timeout = -1)
+        private static bool FileSpinWait(this string filePath, int timeout = -1)
         {
             while (filePath.IsFileLocked() || timeout-- > 0)
-                Thread.Sleep(1);
+                Thread.Sleep(10);
 
             return !filePath.IsFileLocked();
         }
@@ -48,11 +48,11 @@ namespace Minotaur.Core
         {
             if (string.IsNullOrEmpty(filePath)) return false;
 
-            var lockFile = filePath.GetFileLock();
+            var lockFile = filePath.GetLockFilePath();
             return File.Exists(lockFile) && File.ReadAllText(lockFile) != lockFileContent;
         }
 
-        private static string GetFileLock(this string filePath)
+        private static string GetLockFilePath(this string filePath)
         {
             if (string.IsNullOrEmpty(filePath)) return null;
             return filePath + ".lock";
@@ -64,7 +64,7 @@ namespace Minotaur.Core
         {
             if (!filePath.FileSpinWait()) return AnonymousDisposable.Empty;
 
-            var lockFilePath = filePath.GetFileLock();
+            var lockFilePath = filePath.GetLockFilePath();
             try
             {
                 File.WriteAllText(lockFilePath, lockFileContent);
@@ -76,14 +76,7 @@ namespace Minotaur.Core
 
             return new AnonymousDisposable(() =>
             {
-                try
-                {
-                    File.Delete(lockFilePath);
-                }
-                catch (Exception)
-                {
-                    // Todo: log error here
-                }
+                lockFilePath.DeleteFile();
             });
         }
 

@@ -58,7 +58,7 @@ namespace Minotaur.Core.Concurrency
         {
             // When the lock is taken no more new readers and writers can access to the file.
             // But it can still have some older readers on the file.
-            _locker = _filePath.FileLock();
+            _locker = _filePath.LockFile();
 
             // Stop here if the file doesn't exist yet or anymore.
             if (!_filePath.FileExists()) return;
@@ -76,7 +76,7 @@ namespace Minotaur.Core.Concurrency
             {
                 _locker.Dispose();
                 var waitMs = Sleep();
-                _locker = _filePath.FileLock();
+                _locker = _filePath.LockFile();
 
                 totalWait += waitMs;
                 if (totalWait > _writeTimeoutMs) break; // Timeout
@@ -102,7 +102,7 @@ namespace Minotaur.Core.Concurrency
         {
             while (true)
             {
-                using (_filePath.FileLock())
+                using (_filePath.LockFile())
                 {
                     // Stop here if the file doesn't exist yet or anymore.
                     if (!_filePath.FileExists()) break;
@@ -128,7 +128,7 @@ namespace Minotaur.Core.Concurrency
 
         protected override void OnReleaseRead()
         {
-            using (_filePath.FileLock())
+            using (_filePath.LockFile())
             {
                 // Stop here if the file doesn't exist yet or anymore.
                 if (!_filePath.FileExists()) return;

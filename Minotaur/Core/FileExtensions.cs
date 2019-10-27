@@ -10,15 +10,13 @@ namespace Minotaur.Core
 {
     public static class FileExtensions
     {
-        private static readonly string lockFileContent = $"{Environment.MachineName}:{Process.GetCurrentProcess().Id}";
+        #region Folder tools
 
         public static string CreateFolderIfNotExist(this string path)
         {
-            if (string.IsNullOrEmpty(path)) return path;
-
             try
             {
-                if (!Directory.Exists(path))
+                if (!path.FolderExists())
                     Directory.CreateDirectory(path);
             }
             catch (Exception)
@@ -29,66 +27,43 @@ namespace Minotaur.Core
             return path;
         }
 
-        public static string GetFolderPath(this string filePath)
+        public static bool FolderExists(this string path)
+            => !string.IsNullOrEmpty(path) && Directory.Exists(path);
+
+        public static bool DeleteFolder(this string path)
         {
-            if (string.IsNullOrEmpty(filePath)) return filePath;
-
-            return new FileInfo(filePath).Directory?.FullName;
-        }
-
-        private static bool FileSpinWait(this string filePath, int timeout = -1)
-        {
-            while (filePath.IsFileLocked() || timeout-- > 0)
-                Thread.Sleep(10);
-
-            return !filePath.IsFileLocked();
-        }
-
-        private static bool IsFileLocked(this string filePath)
-        {
-            if (string.IsNullOrEmpty(filePath)) return false;
-
-            var lockFile = filePath.GetLockFilePath();
-            return File.Exists(lockFile) && File.ReadAllText(lockFile) != lockFileContent;
-        }
-
-        private static string GetLockFilePath(this string filePath)
-        {
-            if (string.IsNullOrEmpty(filePath)) return null;
-            return filePath + ".lock";
-        }
-
-        // Todo: Lock the file when it's write as when it's read => 2 modes
-        // Todo: the goal is to supports many reads but only 1 write
-        public static IDisposable FileLock(this string filePath)
-        {
-            if (!filePath.FileSpinWait()) return AnonymousDisposable.Empty;
-
-            var lockFilePath = filePath.GetLockFilePath();
             try
             {
-                File.WriteAllText(lockFilePath, lockFileContent);
+                if (!path.FolderExists()) return true;
+
+                Directory.Delete(path, true);
+                return true;
             }
             catch (Exception)
             {
-                // Todo: log error here
+                // Todo: Log here
+                return false;
             }
-
-            return new AnonymousDisposable(() =>
-            {
-                lockFilePath.DeleteFile();
-            });
         }
+
+        #endregion
+
+        #region File tools
+
+        public static string GetFolderPath(this string filePath) => 
+            string.IsNullOrEmpty(filePath) 
+                ? filePath 
+                : new FileInfo(filePath).Directory?.FullName;
 
         public static bool FileExists(this string filePath)
             => !string.IsNullOrEmpty(filePath) && File.Exists(filePath);
 
         public static string MoveFileTo(this string filePath, string newFilePath)
         {
-            if (!filePath.FileExists()) return filePath;
-
             try
             {
+                if (!filePath.FileExists()) return filePath;
+
                 GetFolderPath(newFilePath).CreateFolderIfNotExist();
                 File.Move(filePath, newFilePath);
             }
@@ -103,17 +78,16 @@ namespace Minotaur.Core
         public static IEnumerable<string> MoveToTmpFiles(this IEnumerable<string> files)
             => files.Select(MoveToTmpFile);
 
-        public static string MoveToTmpFile(this string filePath) 
-            => !filePath.FileExists() 
-                ? filePath 
+        public static string MoveToTmpFile(this string filePath)
+            => !filePath.FileExists()
+                ? filePath
                 : filePath.MoveFileTo(filePath + ".tmp");
 
         public static bool DeleteFile(this string filePath)
         {
-            if (!filePath.FileExists()) return true;
-
             try
             {
+                if (!filePath.FileExists()) return true;
                 File.Delete(filePath);
                 return true;
             }
@@ -124,23 +98,59 @@ namespace Minotaur.Core
             }
         }
 
-        public static bool FolderExists(this string path)
-            => !string.IsNullOrEmpty(path) && Directory.Exists(path);
+        #endregion
 
-        public static bool DeleteFolder(this string path)
+        #region File locker
+
+        private static readonly Random random = new Random();
+
+        public static IDisposable LockFile(this string filePath, int timeoutMs = -1)
         {
-            if (!path.FolderExists()) return true;
+            if (string.IsNullOrEmpty(filePath)) return AnonymousDisposable.Empty;
 
-            try
+            var lockFilePath = filePath + ".lock";
+            var waitTimeMs = 0;
+            FileStream lockFile;
+            while (true)
             {
-                Directory.Delete(path, true);
-                return true;
+                try
+                {
+                    if (!File.Exists(lockFilePath))
+                    {
+                        lockFile = new FileStream(
+                            lockFilePath,
+                            FileMode.CreateNew,
+                            FileAccess.ReadWrite,
+                            FileShare.Delete, 1);
+                        break;
+                    }
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
+
+                var wait = random.Next(0, 10);
+                Thread.Sleep(wait);
+                waitTimeMs += wait;
+                if (timeoutMs >= 0 && waitTimeMs > timeoutMs)
+                    lockFilePath.DeleteFile();
             }
-            catch (Exception)
+
+            return new AnonymousDisposable(() =>
             {
-                // Todo: Log here
-                return false;
-            }
+                try
+                {
+                    File.Delete(lockFilePath);
+                    lockFile.Dispose();
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
+            });
         }
+
+        #endregion
     }
 }

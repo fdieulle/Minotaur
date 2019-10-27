@@ -113,7 +113,7 @@ namespace Minotaur.Providers
         private static BTree<DateTime, FileMetaData> LoadBTree(string metaFilePath)
         {
             // SpinLock file meta for multi processes concurrency
-            using (metaFilePath.FileLock())
+            using (metaFilePath.LockFile())
             {
                 var meta = serializer.Deserialize<List<FileMetaData>>(metaFilePath);
                 if (meta == null) return null;
@@ -127,7 +127,7 @@ namespace Minotaur.Providers
 
         private static void Persist(string metaFilePath, BTree<DateTime, FileMetaData> bTree)
         {
-            using (metaFilePath.FileLock())
+            using (metaFilePath.LockFile())
             {
                 // Merge meta and drop collisions
                 var meta = serializer.Deserialize<List<FileMetaData>>(metaFilePath);

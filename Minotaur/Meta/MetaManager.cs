@@ -23,7 +23,7 @@ namespace Minotaur.Meta
             var metaFile = _filePathProvider.GetMetaFilePath(symbol);
             lock (_symbols) // Protection against other threads
             {
-                using (metaFile.FileLock()) // Protection against other processes and machines
+                using (metaFile.LockFile()) // Protection against other processes and machines
                 {
                     if (!_symbols.TryGetValue(symbol, out var meta))
                         _symbols.Add(symbol, meta = new SymbolMeta(symbol));
@@ -46,7 +46,7 @@ namespace Minotaur.Meta
             var metaFile = _filePathProvider.GetMetaFilePath(symbol);
             lock (_symbols) // Protection against other threads
             {
-                var locker = metaFile.FileLock(); // Protection against other processes and machines
+                var locker = metaFile.LockFile(); // Protection against other processes and machines
 
                 if(!_symbols.TryGetValue(symbol, out var meta))
                     _symbols.Add(symbol, meta = new SymbolMeta(symbol));
@@ -68,7 +68,7 @@ namespace Minotaur.Meta
             var metaFile = _filePathProvider.GetMetaFilePath(symbol);
             lock (_symbols) // Protection against other threads
             {
-                var locker = metaFile.FileLock(); // Protection against other processes and machines
+                var locker = metaFile.LockFile(); // Protection against other processes and machines
 
                 if (!_symbols.TryGetValue(symbol, out var meta))
                     _symbols.Add(symbol, meta = new SymbolMeta(symbol));

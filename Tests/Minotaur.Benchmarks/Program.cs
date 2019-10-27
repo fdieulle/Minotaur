@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Management;
 using System.Reflection;
+using System.Threading;
 using BenchmarkDotNet.Running;
 using Minotaur.Benchmarks.Codecs;
 

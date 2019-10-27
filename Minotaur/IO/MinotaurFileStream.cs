@@ -28,7 +28,7 @@ namespace Minotaur.IO
         public MinotaurFileStream(string filePath)
         {
             filePath.GetFolderPath().CreateFolderIfNotExist();
-            _fileLocker = filePath.FileLock();
+            _fileLocker = filePath.LockFile();
             _current = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, 1);
             //??_current.SetLength(length);
         }

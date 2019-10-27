@@ -11,7 +11,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Minotaur.Tests", "Tests\Min
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minotaur.Benchmarks", "Tests\Minotaur.Benchmarks\Minotaur.Benchmarks.csproj", "{E77EAE62-7997-4CA1-BF76-3765CAA41538}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minotaur.Pocs", "Tests\Minotaur.Pocs\Minotaur.Pocs.csproj", "{32688EA2-7D03-407D-A113-5ECD96724CBC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Minotaur.Pocs", "Tests\Minotaur.Pocs\Minotaur.Pocs.csproj", "{32688EA2-7D03-407D-A113-5ECD96724CBC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Minotaur.Tests.Cli", "Tests\Minotaur.Tests.Cli\Minotaur.Tests.Cli.csproj", "{F4E1456D-6EAF-48C4-B955-0287CF5D8256}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -35,6 +37,10 @@ Global
 		{32688EA2-7D03-407D-A113-5ECD96724CBC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{32688EA2-7D03-407D-A113-5ECD96724CBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{32688EA2-7D03-407D-A113-5ECD96724CBC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F4E1456D-6EAF-48C4-B955-0287CF5D8256}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4E1456D-6EAF-48C4-B955-0287CF5D8256}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4E1456D-6EAF-48C4-B955-0287CF5D8256}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F4E1456D-6EAF-48C4-B955-0287CF5D8256}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -43,6 +49,7 @@ Global
 		{F7CFFDF4-47E5-45EB-B359-5D870066A9A6} = {585AC8DA-678F-4AFA-A93B-09FF30C1F086}
 		{E77EAE62-7997-4CA1-BF76-3765CAA41538} = {585AC8DA-678F-4AFA-A93B-09FF30C1F086}
 		{32688EA2-7D03-407D-A113-5ECD96724CBC} = {585AC8DA-678F-4AFA-A93B-09FF30C1F086}
+		{F4E1456D-6EAF-48C4-B955-0287CF5D8256} = {585AC8DA-678F-4AFA-A93B-09FF30C1F086}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BFFD056A-C694-4031-868F-1E6436E0B3C3}

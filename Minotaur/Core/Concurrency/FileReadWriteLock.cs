@@ -46,7 +46,7 @@ namespace Minotaur.Core.Concurrency
 
         private readonly string _filePath;
         private readonly int _writeTimeoutMs;
-        private IDisposable _locker;
+        private IDisposable _lock;
 
         public FileReadWriteLock(string filePath, int writeTimeoutMs = 30000)
         {
@@ -58,7 +58,7 @@ namespace Minotaur.Core.Concurrency
         {
             // When the lock is taken no more new readers and writers can access to the file.
             // But it can still have some older readers on the file.
-            _locker = _filePath.LockFile();
+            _lock = _filePath.LockFile();
 
             // Stop here if the file doesn't exist yet or anymore.
             if (!_filePath.FileExists()) return;
@@ -67,16 +67,16 @@ namespace Minotaur.Core.Concurrency
             var lastAccessUtc = File.GetLastWriteTimeUtc(_filePath);
 
             // Invalidate the creation Time to indicate readers that a writer is waiting and avoid writer starvation
-            File.SetCreationTimeUtc(_filePath, lastAccessUtc.AddMilliseconds(_writeTimeoutMs * 2 + 1000));
+            File.SetCreationTimeUtc(_filePath, lastAccessUtc.AddDays(2));
 
             // Try acquire write through readers
             // Wait until readers end or an access timeout.
             var totalWait = 0;
             while (lastAccessUtc > creationUtc)
             {
-                _locker.Dispose();
+                _lock.Dispose();
                 var waitMs = Sleep();
-                _locker = _filePath.LockFile();
+                _lock = _filePath.LockFile();
 
                 totalWait += waitMs;
                 if (totalWait > _writeTimeoutMs) break; // Timeout
@@ -95,7 +95,7 @@ namespace Minotaur.Core.Concurrency
                 File.SetLastWriteTimeUtc(_filePath, utcNow);
             }
             
-            _locker?.Dispose();
+            _lock?.Dispose();
         }
 
         protected override void OnAcquireRead()

@@ -82,6 +82,24 @@ namespace Minotaur.Tests.Core
         }
 
         [Test]
+        public void TestPlayWithFileAttributes()
+        {
+            var fileName = $"{Guid.NewGuid():N}.dat";
+            File.Create(fileName).Dispose();
+
+            var creationTime = File.GetCreationTimeUtc(fileName);
+            var lastWriteTime = File.GetLastAccessTimeUtc(fileName);
+
+            File.SetCreationTimeUtc(fileName, lastWriteTime.AddDays(2));
+            Assert.AreNotEqual(File.GetCreationTimeUtc(fileName), creationTime);
+            Assert.AreEqual(File.GetCreationTimeUtc(fileName), lastWriteTime.AddDays(2));
+
+            File.SetLastWriteTimeUtc(fileName, lastWriteTime.AddTicks(1));
+            Assert.AreNotEqual(lastWriteTime, File.GetLastWriteTimeUtc(fileName));
+            Assert.AreEqual(File.GetLastWriteTimeUtc(fileName), lastWriteTime.AddTicks(1));
+        }
+
+        [Test]
         public void TestFileReadWriteLock()
         {
             const int iterations = 100;
@@ -142,7 +160,7 @@ namespace Minotaur.Tests.Core
                 Assert.AreEqual(iterations, counter);
         }
 
-        [Test, Ignore("Still have concurrency")]
+        [Test, Ignore("Not working yet")]
         public void TestMultiProcessReaderWriterLock()
         {
             const int nbReaders = 1;
@@ -174,6 +192,7 @@ namespace Minotaur.Tests.Core
 
                 var processes = processInfos.Select(Process.Start).ToList();
 
+                Thread.Sleep(100);
                 // Starts all processes
                 File.Create(waitFile).Dispose();
                 

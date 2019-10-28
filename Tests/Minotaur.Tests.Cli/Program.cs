@@ -46,7 +46,7 @@ namespace Minotaur.Tests.Cli
             var locker = new FileReadWriteLock(options.FilePath);
             var tasks = new List<Task>();
             var exceptions = new ConcurrentBag<Exception>();
-            
+
             if (options.Access.HasFlag(FileAccess.Read))
                 tasks.Add(Task.Run(() =>
                 {
@@ -54,7 +54,7 @@ namespace Minotaur.Tests.Cli
                     {
                         while (!string.IsNullOrEmpty(options.StartWaitForFile) && !options.StartWaitForFile.FileExists())
                             Thread.Sleep(0);
-                        
+
                         var ends = DateTime.UtcNow.AddMilliseconds(options.RetryDurationMs);
                         while (DateTime.UtcNow < ends)
                         {
@@ -65,7 +65,8 @@ namespace Minotaur.Tests.Cli
 
                                 if (options.FilePath.FileExists())
                                 {
-                                    using (var reader = new StreamReader(new FileStream(options.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read)))
+                                    using (var reader = new StreamReader(new FileStream(options.FilePath,
+                                        FileMode.Open, FileAccess.Read, FileShare.Read)))
                                     {
                                         var text = reader.ReadLine();
                                         if (options.Verbose)
@@ -98,7 +99,9 @@ namespace Minotaur.Tests.Cli
                                 if (options.Verbose)
                                     Console.WriteLine("Data accessed to write");
 
-                                using (var writer = new StreamWriter(new FileStream(options.FilePath, FileMode.OpenOrCreate,
+
+                                using (var writer = new StreamWriter(new FileStream(options.FilePath,
+                                    FileMode.OpenOrCreate,
                                     FileAccess.Write, FileShare.None)))
                                     writer.WriteLine("Hello my data");
 

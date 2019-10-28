@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using Minotaur.Core.Anonymous;
 
 namespace Minotaur.Core
 {

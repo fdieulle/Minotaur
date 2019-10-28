@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Minotaur.Core;
-using Minotaur.Core.Anonymous;
 using Minotaur.Cursors;
 using Minotaur.Db;
 using Minotaur.Providers;
@@ -175,7 +174,7 @@ namespace Minotaur.Tests.Providers
         [Test]
         public void ReadWhenTheCurrentCursorFileIsModified()
         {
-
+            // Todo
         }
 
         private static Dictionary<string, Array> CreateRandomData(string start, string end, params string[] columns)
@@ -279,7 +278,7 @@ namespace Minotaur.Tests.Providers
             var allocator = new DummyUnmanagedAllocator();
             db = new FileTimeSeriesDb(fpp, allocator);
 
-            return new AnonymousDisposable(() =>
+            return Disposable.Create(() =>
             {
                 fpp.Dispose();
                 allocator.Dispose();

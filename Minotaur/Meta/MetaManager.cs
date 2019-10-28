@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using Minotaur.Core;
-using Minotaur.Core.Anonymous;
 using Minotaur.Providers;
 
 namespace Minotaur.Meta
@@ -81,7 +80,7 @@ namespace Minotaur.Meta
                     meta.LastWriteTimeUtc = lastWriteTime;
                 }
 
-                return new AnonymousDisposable(() =>
+                return Disposable.Create(() =>
                 {
                     try
                     {

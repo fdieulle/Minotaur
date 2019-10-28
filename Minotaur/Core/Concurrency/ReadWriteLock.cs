@@ -5,12 +5,10 @@ namespace Minotaur.Core.Concurrency
 {
     public class ReadWriteLock : IDisposable
     {
-        private readonly Semaphore _resourceAccess = new Semaphore(1, 1); // like a lock Todo: See to replace with Monitor.Enter/Exit
-        private readonly Semaphore _readCountAccess = new Semaphore(1, 1); // like a lock Todo: See to replace with Monitor.Enter/Exit
-        private readonly Semaphore _serviceQueue = new Semaphore(1, 1); // like a lock Todo: See to replace with Monitor.Enter/Exit
+        private readonly ReaderWriterLockSlim _readerWriterLockSlim = new ReaderWriterLockSlim();
         private readonly Disposable _releaseRead;
         private readonly Disposable _releaseWrite;
-        private int _readCount;
+        private bool _isAcquired;
 
         public ReadWriteLock()
         {
@@ -20,24 +18,15 @@ namespace Minotaur.Core.Concurrency
 
         public IDisposable AcquireWrite()
         {
-            _serviceQueue.WaitOne(); // Wait in line to be served
-            // <Enter>
-            // Todo: Put a timeout here !
-            _resourceAccess.WaitOne(); // Request exclusive access to resource 
+            _readerWriterLockSlim.EnterWriteLock();
             OnAcquireWrite();
-            // </Enter>
-            _serviceQueue.Release();
-
-            // writing is performed until dispose this object
             return _releaseWrite;
         }
 
         private void ReleaseWrite()
         {
-            // <Exit>
             OnReleaseWrite();
-            _resourceAccess.Release(); // release resource access for next reader/writer
-            // </Exit>
+            _readerWriterLockSlim.ExitWriteLock();
         }
 
         protected virtual void OnAcquireWrite() { }
@@ -46,38 +35,30 @@ namespace Minotaur.Core.Concurrency
 
         public IDisposable AcquireRead()
         {
-            _serviceQueue.WaitOne(); // wait in line to be serviced
-            _readCountAccess.WaitOne(); // request exclusive access to readCount
-            // <Enter>
-            if (_readCount == 0) // if there are no readers already reading:
-            {
-                _resourceAccess.WaitOne(); // request resource access for readers (writers blocked)
-                OnAcquireRead();
-            }
-            _readCount++;
-            // </Enter>
-            _serviceQueue.Release(); // let next in line be serviced
-            _readCountAccess.Release();// release access to readCount
+            _readerWriterLockSlim.EnterReadLock();
+            if (_isAcquired) return _releaseRead;
 
-            // <Read /> reading is performed until dispose this object.
+            lock (_readerWriterLockSlim)
+            {
+                OnAcquireRead();
+                _isAcquired = true;
+            }
 
             return _releaseRead;
         }
 
         private void ReleaseRead()
         {
-            _readCountAccess.WaitOne(); // request exclusive access to readCount
+            _readerWriterLockSlim.ExitReadLock();
+            if (_readerWriterLockSlim.CurrentReadCount != 0) return;
 
-            // <Exit>
-            _readCount--; // update count of active readers
-            if (_readCount == 0) // if there are no readers left:
+            lock (_readerWriterLockSlim)
             {
-                OnReleaseRead();
-                _resourceAccess.Release(); // release resource access for all
-            }
-            // </Exit>
+                if (_readerWriterLockSlim.CurrentReadCount != 0) return;
 
-            _readCountAccess.Release(); // release access to readCount
+                OnReleaseRead();
+                _isAcquired = false;
+            }
         }
 
         protected virtual void OnAcquireRead() { }
@@ -89,6 +70,7 @@ namespace Minotaur.Core.Concurrency
         public void Dispose()
         {
             AcquireWrite().Dispose();
+            _readerWriterLockSlim.Dispose();
         }
 
         #endregion

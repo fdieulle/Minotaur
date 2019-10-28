@@ -106,50 +106,73 @@ namespace Minotaur.Core
 
         public static IDisposable LockFile(this string filePath, int timeoutMs = -1)
         {
-            if (string.IsNullOrEmpty(filePath)) return AnonymousDisposable.Empty;
+            if (string.IsNullOrEmpty(filePath)) return Disposable.Empty;
 
             var lockFilePath = filePath + ".lock";
-            var waitTimeMs = 0;
-            FileStream lockFile;
-            while (true)
-            {
-                try
-                {
-                    if (!File.Exists(lockFilePath))
-                    {
-                        lockFile = new FileStream(
-                            lockFilePath,
-                            FileMode.CreateNew,
-                            FileAccess.ReadWrite,
-                            FileShare.Delete, 1);
-                        break;
-                    }
-                }
-                catch (Exception)
-                {
-                    // ignored
-                }
+            var waitedTimeMs = 0;
+            FileStream lockedFile;
 
-                var wait = random.Next(0, 10);
-                Thread.Sleep(wait);
-                waitTimeMs += wait;
-                if (timeoutMs >= 0 && waitTimeMs > timeoutMs)
+            while (!TryAcquireLock(lockFilePath, out lockedFile))
+            {
+                waitedTimeMs += Wait();
+                if (IsTimedOut(waitedTimeMs, timeoutMs))
                     lockFilePath.DeleteFile();
             }
 
-            return new AnonymousDisposable(() =>
-            {
-                try
-                {
-                    File.Delete(lockFilePath);
-                    lockFile.Dispose();
-                }
-                catch (Exception)
-                {
-                    // ignored
-                }
-            });
+            return Disposable.Create(ReleaseLock, lockedFile);
         }
+
+        private static bool TryAcquireLock(string filePath, out FileStream lockedFile)
+        {
+            try
+            {
+                if (!File.Exists(filePath))
+                {
+                    lockedFile = AcquireLock(filePath);
+                    return true;
+                }
+            }
+            catch (IOException)
+            {
+                // ignored
+            }
+
+            lockedFile = null;
+            return false;
+        }
+
+        private static FileStream AcquireLock(string filePath)
+        {
+            return new FileStream(
+                filePath,
+                FileMode.CreateNew,
+                FileAccess.ReadWrite,
+                FileShare.Delete, 
+                1);
+        }
+
+        private static void ReleaseLock(FileStream lockedFile)
+        {
+            try
+            {
+                File.Delete(lockedFile.Name);
+                lockedFile.Dispose();
+            }
+            catch (IOException)
+            {
+                // ignored
+            }
+        }
+
+        private static int Wait()
+        {
+            var wait = random.Next(0, 10);
+            Thread.Sleep(wait);
+            return wait;
+        }
+
+        private static bool IsTimedOut(int waitedMs, int timeoutMs) 
+            => timeoutMs >= 0 && waitedMs > timeoutMs;
 
         #endregion
     }

@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Minotaur.Core.Concurrency;
 
 namespace Minotaur.Core
 {
@@ -172,6 +174,24 @@ namespace Minotaur.Core
 
         private static bool IsTimedOut(int waitedMs, int timeoutMs) 
             => timeoutMs >= 0 && waitedMs > timeoutMs;
+
+        public static IDisposable AcquireReadLock(this string filePath) 
+            => filePath.GetLock().AcquireRead();
+
+        public static IDisposable AcquireWriteLock(this string filePath) 
+            => filePath.GetLock().AcquireWrite();
+
+        private static readonly Dictionary<string, FileReadWriteLock> locks = new Dictionary<string, FileReadWriteLock>();
+        private static FileReadWriteLock GetLock(this string filePath)
+        {
+            filePath = Path.GetFullPath(filePath ?? string.Empty);
+            lock (locks)
+            {
+                if(!locks.TryGetValue(filePath, out var locker))
+                    locks.Add(filePath, locker = new FileReadWriteLock(filePath));
+                return locker;
+            }
+        }
 
         #endregion
     }

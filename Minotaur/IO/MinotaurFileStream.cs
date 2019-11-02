@@ -8,7 +8,7 @@ namespace Minotaur.IO
     public class MinotaurFileStream : IStream
     {
         private readonly IEnumerator<string> _enumerator;
-        private readonly IDisposable _fileLocker;
+        private IDisposable _fileLock;
         private FileStream _current;
 
         public long Position => _current?.Position ?? 0;
@@ -28,7 +28,7 @@ namespace Minotaur.IO
         public MinotaurFileStream(string filePath)
         {
             filePath.GetFolderPath().CreateFolderIfNotExist();
-            _fileLocker = filePath.LockFile();
+            _fileLock = filePath.AcquireWriteLock();
             _current = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, 1);
             //??_current.SetLength(length);
         }
@@ -40,6 +40,7 @@ namespace Minotaur.IO
             while (_current == null || (read = _current.Read(buffer, offset, count)) == 0)
             {
                 _current?.Dispose();
+                _fileLock?.Dispose();
 
                 do
                 {
@@ -49,17 +50,18 @@ namespace Minotaur.IO
                 while (!_enumerator.Current.FileExists());
 
                 if (_enumerator.Current != null)
+                {
+                    _fileLock = _enumerator.Current.AcquireReadLock();
                     _current = new FileStream(_enumerator.Current, FileMode.Open, FileAccess.Read, FileShare.Read, 1);
+                }
                 else break;
             }
 
             return read;
         }
 
-        public void Write(byte[] buffer, int offset, int count)
-        {
-            _current.Write(buffer, offset, count);
-        }
+        public void Write(byte[] buffer, int offset, int count) 
+            => _current.Write(buffer, offset, count);
 
         public void Reset()
         {
@@ -75,15 +77,13 @@ namespace Minotaur.IO
             }
         }
 
-        public void Flush()
-        {
-            _current?.Flush();
-        }
+        public void Flush() 
+            => _current?.Flush();
 
         public void Dispose()
         {
             _current?.Dispose();
-            _fileLocker?.Dispose();
+            _fileLock?.Dispose();
         }
     }
 }

@@ -108,7 +108,8 @@ namespace Minotaur.Tests.Core
             var counters = new int[6];
             var locked = counters.Select(p => FileAccess.ReadWrite).ToArray();
 
-            var threads = Enumerable.Range(0, counters.Length).Select(p => Task.Run(() =>
+            var threads = Enumerable.Range(0, counters.Length)
+                .Select(p => Task.Run(() =>
             {
                 var locker = new FileReadWriteLock(fileName);
                 mre.WaitOne();

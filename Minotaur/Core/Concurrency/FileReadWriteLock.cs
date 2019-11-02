@@ -75,7 +75,7 @@ namespace Minotaur.Core.Concurrency
             while (lastAccessUtc > creationUtc)
             {
                 _lock.Dispose();
-                var waitMs = Sleep();
+                var waitMs = Wait();
                 _lock = _filePath.LockFile();
 
                 totalWait += waitMs;
@@ -100,30 +100,21 @@ namespace Minotaur.Core.Concurrency
 
         protected override void OnAcquireRead()
         {
-            while (true)
+            var lockedFile = _filePath.LockFile();
+
+            if (_filePath.FileExists())
             {
-                using (_filePath.LockFile())
+                while (HasWaitingWriter())
                 {
-                    // Stop here if the file doesn't exist yet or anymore.
-                    if (!_filePath.FileExists()) break;
-
-                    // Read counter
-                    var lastAccessUtc = File.GetLastWriteTimeUtc(_filePath);
-
-                    // A writer is waiting so we block the new readers access
-                    if (File.GetCreationTimeUtc(_filePath) > lastAccessUtc)
-                    {
-                        Sleep();
-                        continue;
-                    }
-
-                    // Increment counter
-                    lastAccessUtc = new DateTime(lastAccessUtc.Ticks + 1, DateTimeKind.Utc);
-                    // Write counter
-                    File.SetLastWriteTimeUtc(_filePath, lastAccessUtc);
-                    break;
+                    lockedFile.Dispose(); // Allow the writer to acquire the lock
+                    Wait();
+                    lockedFile = _filePath.LockFile(); // Waiting for the writer release the lock
                 }
+
+                IncrementReadersCount();
             }
+
+            lockedFile.Dispose();
         }
 
         protected override void OnReleaseRead()
@@ -133,16 +124,28 @@ namespace Minotaur.Core.Concurrency
                 // Stop here if the file doesn't exist yet or anymore.
                 if (!_filePath.FileExists()) return;
 
-                // Read counter
-                var lastAccessUtc = File.GetLastWriteTimeUtc(_filePath);
-                // Decrement counter
-                lastAccessUtc = new DateTime(lastAccessUtc.Ticks + 1, DateTimeKind.Utc);
-                // Write counter
-                File.SetLastWriteTimeUtc(_filePath, lastAccessUtc);
+                DecrementReadersCount();
             }
         }
 
-        private int Sleep()
+        private bool HasWaitingWriter() 
+            => File.GetCreationTimeUtc(_filePath) - File.GetLastWriteTimeUtc(_filePath) > TimeSpan.FromDays(1);
+
+        private void IncrementReadersCount()
+        {
+            var lastAccessUtc = File.GetLastWriteTimeUtc(_filePath);
+            lastAccessUtc = lastAccessUtc.AddTicks(1);
+            File.SetLastWriteTimeUtc(_filePath, lastAccessUtc);
+        }
+
+        private void DecrementReadersCount()
+        {
+            var lastAccessUtc = File.GetLastWriteTimeUtc(_filePath);
+            lastAccessUtc = lastAccessUtc.AddTicks(-1);
+            File.SetLastWriteTimeUtc(_filePath, lastAccessUtc);
+        }
+
+        private int Wait()
         {
             var waitMs = random.Next(1, 1000); // Randomize the waiting time
             Thread.Sleep(waitMs);

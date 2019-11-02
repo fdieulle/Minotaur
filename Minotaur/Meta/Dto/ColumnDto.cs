@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 
-namespace Minotaur.Meta
+namespace Minotaur.Meta.Dto
 {
-    public class ColumnMetaDto : ColumnInfo
+    public class ColumnDto : ColumnInfo
     {
         public List<TimeSlice> Timeline { get; set; }
     }

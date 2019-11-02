@@ -15,7 +15,7 @@ namespace Minotaur.Recorders
         private readonly ITimeSeriesDbUpdater _dbUpdater;
         private readonly IAllocator _allocator;
         private readonly byte* _buffer;
-        private readonly Dictionary<string, Column> _columns = new Dictionary<string, Column>();
+        private readonly Dictionary<string, ColumnStreamCommit> _columns = new Dictionary<string, ColumnStreamCommit>();
 
         private DateTime _currentTimestamp;
 
@@ -87,7 +87,7 @@ namespace Minotaur.Recorders
 
             if (!_columns.TryGetValue(column, out var tuple))
             {
-                _columns.Add(column, tuple = new Column(_currentTimestamp)
+                _columns.Add(column, tuple = new ColumnStreamCommit(_currentTimestamp)
                 {
                     Name = column,
                     Type = Natives.GetType<T>()
@@ -122,11 +122,11 @@ namespace Minotaur.Recorders
 
         #endregion
 
-        private class Column : ColumnCommit
+        private class ColumnStreamCommit : ColumnCommit
         {
             public IColumnStream Stream { get; set; }
 
-            public Column(DateTime start) => Start = start;
+            public ColumnStreamCommit(DateTime start) => Start = start;
         }
     }
 }

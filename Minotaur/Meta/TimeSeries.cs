@@ -4,32 +4,33 @@ using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
 using Minotaur.Core;
+using Minotaur.Meta.Dto;
 
 namespace Minotaur.Meta
 {
-    public class SymbolMeta : ISymbolMeta
+    public class TimeSeries : ITimeSeries
     {
-        private static readonly XmlSerializer serializer = new XmlSerializer(typeof(SymbolMetaDto));
+        private static readonly XmlSerializer serializer = new XmlSerializer(typeof(TimeSeriesDto));
 
-        private readonly Dictionary<string, ColumnMeta> _columns = new Dictionary<string, ColumnMeta>();
+        private readonly Dictionary<string, Column> _columns = new Dictionary<string, Column>();
 
         public string Symbol { get; }
 
         public DateTime LastWriteTimeUtc { get; set; }
 
-        public SymbolMeta(string symbol)
+        public TimeSeries(string symbol)
         {
             Symbol = symbol;
         }
 
-        public ColumnMeta GetOrCreateColumn(string column, FieldType type = FieldType.Unknown)
+        public Column GetOrCreateColumn(string column, FieldType type = FieldType.Unknown)
         {
             if (!_columns.TryGetValue(column ?? string.Empty, out var meta))
             {
                 if (type == FieldType.Unknown)
                     throw new InvalidDataException($"Column type Unknown isn't supported and has to be defined for {column}.");
 
-                _columns.Add(column ?? string.Empty, meta = new ColumnMeta(column, type));
+                _columns.Add(column ?? string.Empty, meta = new Column(column, type));
             }
 
             if (type != FieldType.Unknown && meta.Type != type)
@@ -38,7 +39,7 @@ namespace Minotaur.Meta
             return meta;
         }
 
-        public ColumnMeta[] GetColumns(string[] names = null)
+        public Column[] GetColumns(string[] names = null)
         {
             return names == null 
                 ? _columns.Values.ToArray() 
@@ -47,7 +48,7 @@ namespace Minotaur.Meta
 
         public void Restore(string filePath)
         {
-            var dto = serializer.Deserialize<SymbolMetaDto>(filePath);
+            var dto = serializer.Deserialize<TimeSeriesDto>(filePath);
             if (dto == null) return;
 
             if(!string.Equals(dto.Symbol, Symbol)) // Todo: Maybe log and restart from an empty file instead of raise an exception
@@ -56,13 +57,13 @@ namespace Minotaur.Meta
             if (dto.Columns != null)
             {
                 foreach (var column in dto.Columns)
-                    _columns[column.Name ?? string.Empty] = new ColumnMeta(column);
+                    _columns[column.Name ?? string.Empty] = new Column(column);
             }
         }
 
         public void Persist(string filePath)
         {
-            var dto = new SymbolMetaDto
+            var dto = new TimeSeriesDto
             {
                 Symbol = Symbol,
                 Columns = _columns.Values

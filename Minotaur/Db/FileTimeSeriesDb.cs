@@ -21,14 +21,14 @@ namespace Minotaur.Db
 
         private readonly IFilePathProvider _filePathProvider;
         private readonly IAllocator _allocator;
-        private readonly MetaManager _metaManager;
+        private readonly Schema _schema;
         private readonly ColumnStreamFactory<MinotaurFileStream> _columnFactory = new ColumnStreamFactory<MinotaurFileStream>();
 
         public FileTimeSeriesDb(IFilePathProvider filePathProvider, IAllocator allocator)
         {
             _filePathProvider = filePathProvider;
             _allocator = allocator;
-            _metaManager = new MetaManager(filePathProvider);
+            _schema = new Schema(filePathProvider);
         }
 
         #region Implementation of ITimeSeriesDb
@@ -38,7 +38,7 @@ namespace Minotaur.Db
             end = end ?? start.AddDays(1);
 
             var cursors = new Dictionary<string, IColumnCursor>();
-            using (_metaManager.OpenMetaToRead(symbol, out var meta))
+            using (_schema.OpenToRead(symbol, out var meta))
             {
                 foreach (var column in meta.GetColumns(columns))
                 {
@@ -92,7 +92,7 @@ namespace Minotaur.Db
 
         public void Delete(string symbol, DateTime start, DateTime end, string[] columns = null)
         {
-            using (_metaManager.OpenMetaToWrite(symbol, out var meta))
+            using (_schema.OpenToWrite(symbol, out var meta))
             {
                 foreach (var column in meta.GetColumns(columns))
                     Delete(symbol, column, start, end);
@@ -111,7 +111,7 @@ namespace Minotaur.Db
 
         public void Commit(string symbol, params ColumnCommit[] columns)
         {
-            using (_metaManager.OpenMetaToWrite(symbol, out var meta))
+            using (_schema.OpenToWrite(symbol, out var meta))
             {
                 foreach (var column in columns)
                 {
@@ -121,7 +121,7 @@ namespace Minotaur.Db
             }
         }
 
-        private void CommitColumn(string symbol, ColumnMeta column, DateTime start, DateTime end)
+        private void CommitColumn(string symbol, Column column, DateTime start, DateTime end)
         {
             var tmpFile = _filePathProvider.GetTmpFilePath(symbol, column.Name, start);
             if (!tmpFile.FileExists())
@@ -183,7 +183,7 @@ namespace Minotaur.Db
 
         #endregion
 
-        public void Delete(string symbol, ColumnMeta column, DateTime start, DateTime end)
+        public void Delete(string symbol, Column column, DateTime start, DateTime end)
         {
             var filesForDeletion = new List<string>();
             var entries = column.Search(start, end).ToList();
@@ -220,15 +220,15 @@ namespace Minotaur.Db
             }
         }
 
-        private IEnumerable<string> GetFiles(string symbol, ColumnMeta column, DateTime start, DateTime end)
+        private IEnumerable<string> GetFiles(string symbol, Column column, DateTime start, DateTime end)
         {
             var revision = column.Revision;
             var lastEnd = start;
             foreach (var entry in column.Search(start, end).ToList())
             {
-                if (_metaManager.HasChanged(symbol) || column.HasChanged(revision))
+                if (_schema.HasChanged(symbol) || column.HasChanged(revision))
                 {
-                    using (_metaManager.OpenMetaToRead(symbol, out var symbolMeta))
+                    using (_schema.OpenToRead(symbol, out var symbolMeta))
                         column = symbolMeta.GetOrCreateColumn(column.Name);
                     
                     foreach (var file in GetFiles(symbol, column, lastEnd, end))
@@ -345,7 +345,7 @@ namespace Minotaur.Db
         private MinotaurFileStream CreateWriter(string filePath)
             => new MinotaurFileStream(filePath);
 
-        private MinotaurFileStream CreateReader(string symbol, ColumnMeta column, DateTime start, DateTime end)
+        private MinotaurFileStream CreateReader(string symbol, Column column, DateTime start, DateTime end)
             => new MinotaurFileStream(GetFiles(symbol, column, start, end));
     }
 }

@@ -2,22 +2,23 @@
 using System.Collections.Generic;
 using System.Linq;
 using Minotaur.Core;
+using Minotaur.Meta.Dto;
 
 namespace Minotaur.Meta
 {
-    public class ColumnMeta : ColumnInfo
+    public class Column : ColumnInfo
     {
         private readonly BTree<DateTime, TimeSlice> _timeline = new BTree<DateTime, TimeSlice>(50);
 
         public int Revision { get; private set; }
 
-        public ColumnMeta(string name, FieldType type)
+        public Column(string name, FieldType type)
         {
             Name = name ?? string.Empty;
             Type = type;
         }
 
-        public ColumnMeta(ColumnMetaDto dto)
+        public Column(ColumnDto dto)
             : this(dto.Name, dto.Type)
         {
             if (dto.Timeline == null) return;
@@ -42,7 +43,7 @@ namespace Minotaur.Meta
         public IEnumerable<Entry<DateTime, TimeSlice>> Search(DateTime start, DateTime end) 
             => _timeline.Search(start, end);
 
-        public ColumnMetaDto ToDto() => new ColumnMetaDto
+        public ColumnDto ToDto() => new ColumnDto
         {
             Name = Name,
             Type = Type,

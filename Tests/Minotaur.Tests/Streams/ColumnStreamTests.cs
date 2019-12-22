@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Minotaur.Codecs;
 using Minotaur.Core;
 using Minotaur.IO;
+using Minotaur.Native;
 using Minotaur.Pocs.Codecs.Int32;
 using Minotaur.Pocs.Streams;
 using Minotaur.Streams;
@@ -28,11 +29,12 @@ namespace Minotaur.Tests.Streams
         protected virtual void OnSetup() { }
         protected virtual void OnTeardown() { }
 
-        protected virtual IColumnStream CreateColumnStream<TEntry>(int bufferSize)
+        protected virtual IColumnStream CreateColumnStream<TEntry, TCodec>(int bufferSize, TCodec codec)
             where TEntry : unmanaged
+            where TCodec : ICodec<TEntry>
             => new ColumnStream<TEntry>(
                 new MinotaurMemoryStream(),
-                new VoidCodec<TEntry>(),
+                (ICodec<TEntry>)codec ?? new VoidCodec<TEntry>(),
                 bufferSize);
 
         [Test]
@@ -41,7 +43,7 @@ namespace Minotaur.Tests.Streams
             var ms = new MinotaurMemoryStream();
 
             const int bufferSize = 1024;
-            var wrapSize = sizeof(PayloadHeader) + sizeof(byte);
+            var wrapSize = sizeof(PayloadHeader) + sizeof(byte) * 2 + sizeof(byte);
             var bufferSizeWithoutWrapSize = bufferSize - wrapSize;
             const int fullBufferSize = bufferSize * 5 + 512;
 
@@ -155,11 +157,11 @@ namespace Minotaur.Tests.Streams
 
         [Test]
         public void TimelineTicksTest()
-            => CheckStream(p => Factory.CreateTimelineTicks(p));
+            => CheckStream(p => Factory.CreateTimelineTicks(p), new VoidCodec<long>());
 
         [Test]
         public void VoidCodecForInt32EntryTest()
-            => CheckStream(p => Factory.CreateInt32Chunk(p));
+            => CheckStream(p => Factory.CreateInt32Chunk(p), new VoidCodec<Int32Entry>());
 
         [Test]
         public void MinDelta32CodecForInt32Test()
@@ -171,22 +173,23 @@ namespace Minotaur.Tests.Streams
 
         [Test]
         public void VoidCodecForDoubleEntryTest()
-            => CheckStream(p => Factory.CreateDoubleChunk(p));
+            => CheckStream(p => Factory.CreateDoubleChunk(p), new VoidCodec<DoubleEntry>());
 
         [Test]
         public void VoidCodecForInt64EntryTest()
-            => CheckStream(p => Factory.CreateInt64Chunk(p));
+            => CheckStream(p => Factory.CreateInt64Chunk(p), new VoidCodec<Int64Entry>());
 
         [Test]
         public void VoidCodecForFloatEntryTest()
-            => CheckStream(p => Factory.CreateFloatChunk(p));
+            => CheckStream(p => Factory.CreateFloatChunk(p), new VoidCodec<FloatEntry>());
 
         [Test, Ignore("Has to be fixed !")]
         public void VoidCodecForStringEntryTest()
-            => CheckStream(p => Factory.CreateStringChunk(p));
+            => CheckStream(p => Factory.CreateStringChunk(p), new VoidCodec<StringEntry>());
 
-        private void CheckStream<T>(Func<int, T[]> factory, ICodec<T> codec = null)
+        private void CheckStream<T, TCodec>(Func<int, T[]> factory, TCodec codec = default)
             where T : unmanaged
+            where TCodec : ICodec<T>
         {
             const int bufferLength = 8192;
 
@@ -197,10 +200,8 @@ namespace Minotaur.Tests.Streams
             try
             {
                 var stream = codec == null 
-                    ? CreateColumnStream<T>(bufferLength) 
-                    : new ColumnStreamWithRetry<T, ICodec<T>>(
-                        new System.IO.MemoryStream(),
-                        codec);
+                    ? CreateColumnStream<T, VoidCodec<T>>(bufferLength, new VoidCodec<T>()) 
+                    : CreateColumnStream<T, TCodec>(bufferLength, codec);
 
                 var pdata = (byte*)handle.AddrOfPinnedObject();
 
@@ -221,6 +222,51 @@ namespace Minotaur.Tests.Streams
                 }
 
                 Assert.AreEqual(data.Length, counter);
+            }
+            finally
+            {
+                handle.Free();
+            }
+        }
+
+        [Test]
+        public void GetBlockBoundsTest()
+        {
+            const int blockSize = 8192;
+
+            var data = Factory.CreateDoubleChunk(blockSize / sizeof(DoubleEntry) * 21);
+            
+            var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
+            try
+            {
+                var stream = new ColumnStream<DoubleEntry>(
+                    new MinotaurMemoryStream(),
+                    new VoidCodec<DoubleEntry>(),
+                    blockSize);
+
+                var pdata = (byte*)handle.AddrOfPinnedObject();
+
+                stream.Write(pdata, data.Length * sizeof(DoubleEntry));
+                stream.Flush();
+
+                stream.Reset();
+
+                var blocks = stream.ReadBlockInfos();
+
+                Assert.AreEqual(21, blocks.Count);
+                for (int i = 0, j = 0; i < blocks.Count; i++)
+                {
+                    Assert.AreEqual(blocks[i].PayloadLength, blockSize);
+                    Assert.AreEqual(blocks[i].DataLength, blockSize / sizeof(DoubleEntry));
+                    Assert.AreEqual(blocks[i].ShellSize, sizeof(PayloadHeader) + 2 * sizeof(DoubleEntry) + sizeof(byte));
+                    Assert.AreEqual(blocks[i].Version, 1);
+
+                    Assert.AreEqual(blocks[i].FirstValue.ticks, data[j].ticks);
+                    Assert.AreEqual(blocks[i].FirstValue.value, data[j].value);
+                    j += blocks[i].DataLength;
+                    Assert.AreEqual(blocks[i].LastValue.ticks, data[j - 1].ticks);
+                    Assert.AreEqual(blocks[i].LastValue.value, data[j - 1].value);
+                }
             }
             finally
             {

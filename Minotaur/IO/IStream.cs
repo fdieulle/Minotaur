@@ -15,5 +15,7 @@ namespace Minotaur.IO
         void Reset();
 
         void Flush();
+
+        long Seek(long offset);
     }    
 }

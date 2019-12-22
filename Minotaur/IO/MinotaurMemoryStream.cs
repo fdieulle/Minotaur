@@ -24,9 +24,8 @@ namespace Minotaur.IO
         public MinotaurMemoryStream(int capacity) 
             : base(capacity) { }
 
-        public void Reset()
-        {
-            Seek(0, SeekOrigin.Begin);
-        }
+        public void Reset() => Seek(0, SeekOrigin.Begin);
+
+        public long Seek(long offset) => Seek(offset, SeekOrigin.Current);
     }
 }

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Minotaur.Codecs;
 using Minotaur.Core;
@@ -20,6 +22,10 @@ namespace Minotaur.Streams
     /// ----------|-------------------------------
     /// 1 Byte    | Version.
     /// ----------|-------------------------------
+    /// sizeof(T) | First block value.
+    /// ----------|-------------------------------
+    /// sizeof(T) | Last block value.
+    /// ----------|-------------------------------
     /// n Bytes   | Payload data
     /// ----------|-------------------------------
     /// 1 Byte    | Checksum
@@ -30,6 +36,9 @@ namespace Minotaur.Streams
     {
         private const byte CURRENT_VERSION = 1;
         private const byte CHECKSUM = 12;
+
+        private static readonly int sizeOfHeader = sizeof(PayloadHeader) + sizeof(T) * 2;
+        private static readonly int sizeOfShell = sizeOfHeader + sizeof(byte);
 
         private readonly IStream _underlying;
         private readonly ICodec<T> _codec;
@@ -42,10 +51,10 @@ namespace Minotaur.Streams
             _codec = codec;
 
             _decodedBuffer = new UnsafeBuffer(capacity / sizeof(T) * sizeof(T));
-            _encodedBuffer = new UnsafeBuffer(codec.GetMaxEncodedSize(capacity / sizeof(T)) + sizeof(PayloadHeader) + sizeof(byte));
+            _encodedBuffer = new UnsafeBuffer(codec.GetMaxEncodedSize(capacity / sizeof(T)) + sizeOfHeader + sizeof(byte));
         }
 
-        #region Implementation of IStream
+        #region Implementation of IColumnStream
 
         public int Read(byte* p, int length)
         {
@@ -58,7 +67,7 @@ namespace Minotaur.Streams
                     _encodedBuffer.Reset();
 
                     // Read the payload length
-                    if (_underlying.Read(_encodedBuffer.Data, 0, sizeof(PayloadHeader)) != sizeof(PayloadHeader))
+                    if (_underlying.Read(_encodedBuffer.Data, 0, sizeOfHeader) != sizeOfHeader)
                         return read; // Ends of stream
 
                     var payloadLength = ((PayloadHeader*)_encodedBuffer.Ptr)->PayloadLength;
@@ -128,6 +137,35 @@ namespace Minotaur.Streams
 
         #endregion
 
+        public List<BlockInfo<T>> ReadBlockInfos()
+        {
+            _underlying.Reset();
+            var result = new List<BlockInfo<T>>();
+            while (true)
+            {
+                _encodedBuffer.Reset();
+
+                // Read the header
+                if (_underlying.Read(_encodedBuffer.Data, 0, sizeOfHeader) != sizeOfHeader)
+                    return result; // Ends of stream
+
+                var header = (PayloadHeader*) _encodedBuffer.Ptr;
+                var bounds = (T*) (_encodedBuffer.Ptr + sizeof(PayloadHeader));
+                
+                result.Add(new BlockInfo<T>
+                {
+                    ShellSize = sizeOfShell,
+                    DataLength = header->DataLength,
+                    PayloadLength = header->PayloadLength,
+                    Version = header->Version,
+                    FirstValue = *bounds,
+                    LastValue = *(bounds + 1)
+                });
+
+                _underlying.Seek(header->PayloadLength + sizeof(byte));
+            }
+        }
+
         private void Write()
         {
             _encodedBuffer.Reset();
@@ -136,14 +174,19 @@ namespace Minotaur.Streams
             header->DataLength = (int)(_decodedBuffer.Offset - _decodedBuffer.Ptr) / sizeof(T);
             header->Version = CURRENT_VERSION;
 
+            // Write first and last value of the block
+            var bounds = (T*)(_encodedBuffer.Ptr + sizeof(PayloadHeader));
+            *(bounds + 1) = *((T*)_decodedBuffer.Ptr + header->DataLength - 1);
+            *bounds = *(T*)_decodedBuffer.Ptr;
+
             header->PayloadLength = _codec.Encode(
                 (T*)_decodedBuffer.Ptr,
                 header->DataLength,
-                _encodedBuffer.Ptr + sizeof(PayloadHeader));
+                _encodedBuffer.Ptr + sizeOfHeader);
+            
+            * (_encodedBuffer.Ptr + sizeOfHeader + header->PayloadLength) = CHECKSUM;
 
-            *(_encodedBuffer.Ptr + sizeof(PayloadHeader) + header->PayloadLength) = CHECKSUM;
-
-            _underlying.Write(_encodedBuffer.Data, 0, header->PayloadLength + sizeof(PayloadHeader) + sizeof(byte));
+            _underlying.Write(_encodedBuffer.Data, 0, header->PayloadLength + sizeOfShell);
 
             _decodedBuffer.Reset();
         }

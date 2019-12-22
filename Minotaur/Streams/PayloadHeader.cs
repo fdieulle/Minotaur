@@ -2,7 +2,7 @@
 
 namespace Minotaur.Streams
 {
-    [StructLayout(LayoutKind.Explicit, Size = 5)]
+    [StructLayout(LayoutKind.Explicit, Size = 9)]
     public struct PayloadHeader
     {
         [field: FieldOffset(0)]

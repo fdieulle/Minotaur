@@ -304,7 +304,7 @@ namespace Minotaur.Db
                 if (yc.Ticks == ticks)
                 {
                     if (filter(ticks))
-                        writer.Write((byte*)yc.Entry, sizeof(TEntry));
+                        writer.Write((byte*) yc.Entry, sizeof(TEntry));
                     yc.MoveNext(yc.NextTicks);
                 }
 

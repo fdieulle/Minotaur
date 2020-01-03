@@ -41,7 +41,7 @@ namespace Minotaur.Meta
         public bool HasChanged(int revision) => revision != Revision;
 
         public IEnumerable<Entry<DateTime, TimeSlice>> Search(DateTime start, DateTime end) 
-            => _timeline.Search(start, end);
+            => _timeline.Search(start, end, p => start < p.End);
 
         public ColumnDto ToDto() => new ColumnDto
         {

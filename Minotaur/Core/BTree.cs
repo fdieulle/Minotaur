@@ -38,9 +38,10 @@ namespace Minotaur.Core
         /// <returns>Entry for that key, null otherwise.</returns>
         public Entry<TKey, TValue> Search(TKey key) => SearchInternal(_root, key);
 
-        public IEnumerable<Entry<TKey, TValue>> Search(TKey start, TKey end)
+        private static readonly Func<TValue, bool> defaultFilter = p => false;
+        public IEnumerable<Entry<TKey, TValue>> Search(TKey start, TKey end, Func<TValue, bool> canTakeLeft = null)
         {
-            return SearchInternal(_root, start, end);
+            return SearchInternal(_root, start, end, canTakeLeft ?? defaultFilter);
         }
 
         /// <summary>
@@ -307,18 +308,24 @@ namespace Minotaur.Core
         /// <param name="node">Node used to start the search.</param>
         /// <param name="start">Start key to be searched.</param>
         /// <param name="end">End key to be searched.</param>
-        private static IEnumerable<Entry<TKey, TValue>> SearchInternal(Node node, TKey start, TKey end)
+        /// <param name="canTakeLeft"></param>
+        private static IEnumerable<Entry<TKey, TValue>> SearchInternal(Node node, TKey start, TKey end, Func<TValue, bool> canTakeLeft)
         {
             while (true)
             {
                 var i = 0;
                 for (; i < node.Entries.Count; i++)
                 {
-                    if (start.CompareTo(node.Entries[i].Key) > 0) continue;
+                    if (start.CompareTo(node.Entries[i].Key) > 0)
+                    {
+                        if(canTakeLeft(node.Entries[i].Value))
+                            yield return node.Entries[i];
+                        continue;
+                    }
                     if (end.CompareTo(node.Entries[i].Key) < 0) break;
 
                     if (i < node.Children.Count)
-                        foreach (var entry in SearchInternal(node.Children[i], start, end))
+                        foreach (var entry in SearchInternal(node.Children[i], start, end, canTakeLeft))
                             yield return entry;
 
                     yield return node.Entries[i];

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace Minotaur.Cursors
 {
@@ -63,6 +64,9 @@ namespace Minotaur.Cursors
 
         public void Dispose()
         {
+            foreach (var column in _columns.Values)
+                column.Dispose();
+            
             _columns.Clear();
             Array.Clear(_cursors, 0, _cursors.Length);
         }

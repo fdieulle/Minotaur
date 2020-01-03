@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Minotaur.Core;
 using Minotaur.Cursors;
 using Minotaur.Db;
@@ -119,6 +120,261 @@ namespace Minotaur.Tests.Providers
         }
 
         [Test]
+        public void ReadTimeSeriesExactBounds()
+        {
+            const string symbol = "SymbolTest";
+            const string c1 = "Column1";
+            const string c2 = "Column2";
+
+            using (CreateDb(out var db))
+            {
+                var data1 = CreateRandomData("08:00:00", "08:10:00", c1, c2);
+                var data2 = CreateRandomData("08:20:00", "08:30:00", c1, c2);
+
+                db.Insert(symbol, data1);
+                db.Insert(symbol, data2);
+
+                var cursor = db.GetCursor(symbol, "08:00:00".ToDateTime(), "08:30:00".ToDateTime());
+
+                var columns = GetColumnProxies(cursor, c1, c2);
+
+                cursor.MoveNext("08:00:00");
+                Check(data1, "08:00:00", columns);
+
+                cursor.MoveNext("08:05:00");
+                Check(data1, "08:05:00", columns);
+
+                cursor.MoveNext("08:10:00");
+                Check(data1, "08:10:00", columns);
+
+                cursor.MoveNext("08:15:00");
+                Check(data1, "08:10:00", columns);
+
+                cursor.MoveNext("08:20:00");
+                Check(data2, "08:20:00", columns);
+
+                cursor.MoveNext("08:25:00");
+                Check(data2, "08:25:00", columns);
+
+                cursor.MoveNext("08:30:00");
+                Check(data2, "08:30:00", columns);
+            }
+        }
+
+        [Test]
+        public void ReadTimeSeriesOverLeftBound()
+        {
+            const string symbol = "SymbolTest";
+            const string c1 = "Column1";
+            const string c2 = "Column2";
+
+            using (CreateDb(out var db))
+            {
+                var data1 = CreateRandomData("08:00:00", "08:10:00", c1, c2);
+                var data2 = CreateRandomData("08:20:00", "08:30:00", c1, c2);
+
+                db.Insert(symbol, data1);
+                db.Insert(symbol, data2);
+
+                var cursor = db.GetCursor(symbol, "07:50:00".ToDateTime(), "08:30:00".ToDateTime());
+
+                var columns = GetColumnProxies(cursor, c1, c2);
+
+                cursor.MoveNext("07:50:00");
+                Check(data1, "07:50:00", columns);
+
+                cursor.MoveNext("07:55:00");
+                Check(data1, "07:55:00", columns);
+
+                cursor.MoveNext("08:00:00");
+                Check(data1, "08:00:00", columns);
+
+                cursor.MoveNext("08:05:00");
+                Check(data1, "08:05:00", columns);
+
+                cursor.MoveNext("08:10:00");
+                Check(data1, "08:10:00", columns);
+
+                cursor.MoveNext("08:15:00");
+                Check(data1, "08:10:00", columns);
+
+                cursor.MoveNext("08:20:00");
+                Check(data2, "08:20:00", columns);
+
+                cursor.MoveNext("08:25:00");
+                Check(data2, "08:25:00", columns);
+
+                cursor.MoveNext("08:30:00");
+                Check(data2, "08:30:00", columns);
+            }
+        }
+
+        [Test]
+        public void ReadTimeSeriesOverRightBound()
+        {
+            const string symbol = "SymbolTest";
+            const string c1 = "Column1";
+            const string c2 = "Column2";
+
+            using (CreateDb(out var db))
+            {
+                var data1 = CreateRandomData("08:00:00", "08:10:00", c1, c2);
+                var data2 = CreateRandomData("08:20:00", "08:30:00", c1, c2);
+
+                db.Insert(symbol, data1);
+                db.Insert(symbol, data2);
+
+                var cursor = db.GetCursor(symbol, "08:00:00".ToDateTime(), "08:40:00".ToDateTime());
+
+                var columns = GetColumnProxies(cursor, c1, c2);
+
+                cursor.MoveNext("08:00:00");
+                Check(data1, "08:00:00", columns);
+
+                cursor.MoveNext("08:05:00");
+                Check(data1, "08:05:00", columns);
+
+                cursor.MoveNext("08:10:00");
+                Check(data1, "08:10:00", columns);
+
+                cursor.MoveNext("08:15:00");
+                Check(data1, "08:10:00", columns);
+
+                cursor.MoveNext("08:20:00");
+                Check(data2, "08:20:00", columns);
+
+                cursor.MoveNext("08:25:00");
+                Check(data2, "08:25:00", columns);
+
+                cursor.MoveNext("08:30:00");
+                Check(data2, "08:30:00", columns);
+
+                cursor.MoveNext("08:35:00");
+                Check(data2, "08:30:00", columns);
+
+                cursor.MoveNext("08:40:00");
+                Check(data2, "08:30:00", columns);
+            }
+        }
+
+        [Test]
+        public void ReadTimeSeriesOverBounds()
+        {
+            const string symbol = "SymbolTest";
+            const string c1 = "Column1";
+            const string c2 = "Column2";
+
+            using (CreateDb(out var db))
+            {
+                var data1 = CreateRandomData("08:00:00", "08:10:00", c1, c2);
+                var data2 = CreateRandomData("08:20:00", "08:30:00", c1, c2);
+
+                db.Insert(symbol, data1);
+                db.Insert(symbol, data2);
+
+                var cursor = db.GetCursor(symbol, "07:50:00".ToDateTime(), "08:40:00".ToDateTime());
+
+                var columns = GetColumnProxies(cursor, c1, c2);
+
+                cursor.MoveNext("07:50:00");
+                Check(data1, "07:50:00", columns);
+
+                cursor.MoveNext("07:55:00");
+                Check(data1, "07:55:00", columns);
+
+                cursor.MoveNext("08:00:00");
+                Check(data1, "08:00:00", columns);
+
+                cursor.MoveNext("08:05:00");
+                Check(data1, "08:05:00", columns);
+
+                cursor.MoveNext("08:10:00");
+                Check(data1, "08:10:00", columns);
+
+                cursor.MoveNext("08:15:00");
+                Check(data1, "08:10:00", columns);
+
+                cursor.MoveNext("08:20:00");
+                Check(data2, "08:20:00", columns);
+
+                cursor.MoveNext("08:25:00");
+                Check(data2, "08:25:00", columns);
+
+                cursor.MoveNext("08:30:00");
+                Check(data2, "08:30:00", columns);
+
+                cursor.MoveNext("08:35:00");
+                Check(data2, "08:30:00", columns);
+
+                cursor.MoveNext("08:40:00");
+                Check(data2, "08:30:00", columns);
+            }
+        }
+
+        [Test]
+        public void ReadTimeSeriesInFirstFile()
+        {
+            const string symbol = "SymbolTest";
+            const string c1 = "Column1";
+            const string c2 = "Column2";
+
+            using (CreateDb(out var db))
+            {
+                var data1 = CreateRandomData("08:00:00", "08:10:00", c1, c2);
+                var data2 = CreateRandomData("08:20:00", "08:30:00", c1, c2);
+
+                db.Insert(symbol, data1);
+                db.Insert(symbol, data2);
+
+                var cursor = db.GetCursor(symbol, "08:05:00".ToDateTime(), "08:25:00".ToDateTime());
+
+                var columns = GetColumnProxies(cursor, c1, c2);
+
+                cursor.MoveNext("08:05:00");
+                Check(data1, "08:05:00", columns);
+
+                cursor.MoveNext("08:10:00");
+                Check(data1, "08:10:00", columns);
+
+                cursor.MoveNext("08:15:00");
+                Check(data1, "08:10:00", columns);
+            }
+        }
+
+        [Test]
+        public void ReadTimeSeriesBetweenFiles()
+        {
+            const string symbol = "SymbolTest";
+            const string c1 = "Column1";
+            const string c2 = "Column2";
+
+            using (CreateDb(out var db))
+            {
+                var data1 = CreateRandomData("08:00:00", "08:10:00", c1, c2);
+                var data2 = CreateRandomData("08:20:00", "08:30:00", c1, c2);
+
+                db.Insert(symbol, data1);
+                db.Insert(symbol, data2);
+
+                var cursor = db.GetCursor(symbol, "08:15:00".ToDateTime(), "08:25:00".ToDateTime());
+
+                var columns = GetColumnProxies(cursor, c1, c2);
+
+                cursor.MoveNext("08:10:00");
+                Check(data2, "08:10:00", columns);
+
+                cursor.MoveNext("08:15:00");
+                Check(data2, "08:10:00", columns);
+
+                cursor.MoveNext("08:20:00");
+                Check(data2, "08:20:00", columns);
+
+                cursor.MoveNext("08:25:00");
+                Check(data2, "08:25:00", columns);
+            }
+        }
+
+        [Test]
         public void ReadSymbolWhenItsModified()
         {
             const string symbol = "SymbolTest";
@@ -174,7 +430,50 @@ namespace Minotaur.Tests.Providers
         [Test]
         public void ReadWhenTheCurrentCursorFileIsModified()
         {
-            // Todo
+            const string symbol = "SymbolTest";
+            const string c1 = "Column1";
+            const string c2 = "Column2";
+
+            using (CreateDb(out var db))
+            {
+                var data1 = CreateRandomData("08:00:00", "08:10:00", c1, c2);
+                var data2 = CreateRandomData("08:20:00", "08:30:00", c1, c2);
+
+                db.Insert(symbol, data1);
+                db.Insert(symbol, data2);
+
+                var cursor = db.GetCursor(symbol, "08:00:00".ToDateTime(), "09:00:00".ToDateTime());
+
+                var columns = GetColumnProxies(cursor, c1, c2);
+
+                cursor.MoveNext("08:00:05");
+                Check(data1, "08:00:05", columns);
+
+                cursor.MoveNext("08:05:00");
+                Check(data1, "08:05:00", columns);
+
+                // Simulate insertion by overwriting data1 and force merge with data2
+                var data1Modified = CreateRandomData("08:04:00", "08:25:00", c1, c2);
+                var writerTask = Task.Run(() => db.Insert(symbol, data1Modified));
+                var dataMerged = Merge(data1, data1Modified);
+                dataMerged = Merge(dataMerged, data2);
+
+                cursor.MoveNext("08:06:00");
+                Check(data1, "08:06:00", columns);
+
+                // Release the reader process to let the writer proceed
+                cursor.Dispose();
+                writerTask.Wait();
+                
+                cursor = db.GetCursor(symbol, "08:00:00".ToDateTime(), "09:00:00".ToDateTime());
+                columns = GetColumnProxies(cursor, c1, c2);
+
+                cursor.MoveNext("08:06:00");
+                Check(dataMerged, "08:06:00", columns);
+
+                cursor.MoveNext("08:15:00");
+                Check(dataMerged, "08:15:00", columns);
+            }
         }
 
         private static Dictionary<string, Array> CreateRandomData(string start, string end, params string[] columns)
@@ -268,8 +567,12 @@ namespace Minotaur.Tests.Providers
         private static void Check(Dictionary<string, Array> data, string timestamp, Dictionary<string, IFieldProxy<double>> columns)
         {
             var idx = GetDataIdx(data, timestamp);
-            foreach (var pair in columns)
-                Assert.AreEqual(pair.Value.Value, ((double[])data[pair.Key])[idx]);
+            if(idx < 0)
+                foreach (var pair in columns)
+                    Assert.AreEqual(pair.Value.Value, double.NaN);
+            else 
+                foreach (var pair in columns)
+                    Assert.AreEqual(pair.Value.Value, ((double[])data[pair.Key])[idx]);
         }
 
         private static IDisposable CreateDb(out ITimeSeriesDb db)

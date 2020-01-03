@@ -8,7 +8,7 @@ namespace Minotaur.Core.Concurrency
         private readonly ReaderWriterLockSlim _readerWriterLockSlim = new ReaderWriterLockSlim();
         private readonly Disposable _releaseRead;
         private readonly Disposable _releaseWrite;
-        private bool _isAcquired;
+        private int _nbReaders;
 
         public ReadWriteLock()
         {
@@ -36,29 +36,24 @@ namespace Minotaur.Core.Concurrency
         public IDisposable AcquireRead()
         {
             _readerWriterLockSlim.EnterReadLock();
-            if (_isAcquired) return _releaseRead;
+            if (Interlocked.Increment(ref _nbReaders) > 1) return _releaseRead;
 
-            lock (_readerWriterLockSlim)
-            {
-                OnAcquireRead();
-                _isAcquired = true;
-            }
-
+            OnAcquireRead();
+            
             return _releaseRead;
         }
 
         private void ReleaseRead()
         {
-            _readerWriterLockSlim.ExitReadLock();
-            if (_readerWriterLockSlim.CurrentReadCount != 0) return;
-
-            lock (_readerWriterLockSlim)
+            if (Interlocked.Decrement(ref _nbReaders) == 0)
             {
-                if (_readerWriterLockSlim.CurrentReadCount != 0) return;
-
-                OnReleaseRead();
-                _isAcquired = false;
+                lock (_readerWriterLockSlim)
+                {
+                    OnReleaseRead();
+                }
             }
+
+            _readerWriterLockSlim.ExitReadLock();
         }
 
         protected virtual void OnAcquireRead() { }

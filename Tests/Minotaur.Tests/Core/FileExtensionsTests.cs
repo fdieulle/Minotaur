@@ -161,6 +161,61 @@ namespace Minotaur.Tests.Core
                 Assert.AreEqual(iterations, counter);
         }
 
+        [Test]
+        public void ReaderWriterLockTest()
+        {
+            const int iterations = 10000;
+            var resource = new List<int> { 1 };
+            var locker = new ReadWriteLock();
+            var concurrentWriterCounter = 0;
+
+            var startSignal = new ManualResetEvent(false);
+            
+            int Read()
+            {
+                var random = new Random();
+                var count = 0;
+                startSignal.WaitOne();
+                for (var i = 0; i < iterations; i++)
+                {
+                    using (locker.AcquireRead())
+                        count += resource[random.Next(0, resource.Count)];
+                    Thread.Sleep(0);
+                }
+
+                return count;
+            }
+
+            int Write()
+            {
+                var random = new Random();
+                var count = 0;
+                startSignal.WaitOne();
+                for (var i = 0; i < iterations; i++)
+                {
+                    using (locker.AcquireRead())
+                    {
+                        if (Interlocked.Increment(ref concurrentWriterCounter) != 1)
+                            Assert.IsTrue(false, "Many writer at the same time");
+                        resource.Add(random.Next(0, 100));
+                        if (Interlocked.Decrement(ref concurrentWriterCounter) != 0)
+                            Assert.IsTrue(false, "Many writer at the same time");
+                    }
+                    Thread.Sleep(0);
+                }
+
+                return count;
+            }
+
+            var readThreads = Enumerable.Range(0, 10).Select(p => Task.Run(Read));
+            var writeThreads = Enumerable.Range(0, 3).Select(p => Task.Run(Write));
+
+            Thread.Sleep(10);
+            startSignal.Set();
+            foreach (var task in readThreads.Concat(writeThreads))
+                task.Wait();
+        }
+
         [Test, Ignore("Not working yet")]
         public void TestMultiProcessReaderWriterLock()
         {
@@ -208,7 +263,5 @@ namespace Minotaur.Tests.Core
                 fileName.DeleteFile();
             }
         }
-
-       
     }
 }

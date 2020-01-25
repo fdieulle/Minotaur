@@ -5,7 +5,6 @@ using Minotaur.Core;
 using Minotaur.IO;
 using Minotaur.Native;
 using Minotaur.Pocs.Codecs.Int32;
-using Minotaur.Pocs.Streams;
 using Minotaur.Streams;
 using NUnit.Framework;
 
@@ -163,11 +162,11 @@ namespace Minotaur.Tests.Streams
         public void VoidCodecForInt32EntryTest()
             => CheckStream(p => Factory.CreateInt32Chunk(p), new VoidCodec<Int32Entry>());
 
-        [Test]
+        [Test, Ignore("Not ready yet")]
         public void MinDelta32CodecForInt32Test()
             => CheckStream(p => Factory.CreateInt32Chunk(p), new MinDeltaInt32Codec());
 
-        [Test]
+        [Test, Ignore("Not ready yet")]
         public void MinDelta32GenericCodecForInt32Test()
             => CheckStream(p => Factory.CreateInt32Chunk(p), new MinDeltaInt32GenericCodec());
 

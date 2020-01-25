@@ -25,8 +25,14 @@ namespace Minotaur.Core.Concurrency
 
         private void ReleaseWrite()
         {
-            OnReleaseWrite();
-            _readerWriterLockSlim.ExitWriteLock();
+            try
+            {
+                OnReleaseWrite();
+            }
+            finally
+            {
+                _readerWriterLockSlim.ExitWriteLock();
+            }
         }
 
         protected virtual void OnAcquireWrite() { }
@@ -45,15 +51,20 @@ namespace Minotaur.Core.Concurrency
 
         private void ReleaseRead()
         {
-            if (Interlocked.Decrement(ref _nbReaders) == 0)
+            try
             {
-                lock (_readerWriterLockSlim)
+                if (Interlocked.Decrement(ref _nbReaders) == 0)
                 {
-                    OnReleaseRead();
+                    lock (_readerWriterLockSlim)
+                    {
+                        OnReleaseRead();
+                    }
                 }
             }
-
-            _readerWriterLockSlim.ExitReadLock();
+            finally
+            {
+                _readerWriterLockSlim.ExitReadLock();
+            }
         }
 
         protected virtual void OnAcquireRead() { }

@@ -4,6 +4,8 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml.Serialization;
+using Minotaur.Meta;
+using Minotaur.Native;
 using Minotaur.Recorders;
 using Minotaur.Streams;
 
@@ -90,5 +92,39 @@ namespace Minotaur
             => new ArrayRecorder<T>(column, array);
 
         #endregion
+
+        public static List<BlockTimeSlice> Sample<TEntry, T>(this List<BlockInfo<TEntry>> blocks, int optimalBlockLength)
+            where TEntry : unmanaged, IFieldEntry<T>
+        {
+            if (blocks == null) return null;
+
+            var result = new List<BlockTimeSlice>();
+
+            var offset = 0;
+            var length = 0;
+            for (var i = 0; i < blocks.Count; i++)
+            {
+                var block = blocks[i];
+
+                if (length == 0)
+                    result.Add(new BlockTimeSlice
+                    {
+                        Start = new DateTime(block.FirstValue.Ticks),
+                        Offset = offset
+                    });
+
+                var blockLength = block.ShellSize + block.PayloadLength;
+                offset += blockLength;
+                length += blockLength;
+
+                if (length >= optimalBlockLength)
+                {
+                    result[result.Count - 1].End = new DateTime(block.LastValue.Ticks);
+                    length = 0;
+                }
+            }
+
+            return result;
+        }
     }
 }

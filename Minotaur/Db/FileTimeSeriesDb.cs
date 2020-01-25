@@ -17,7 +17,9 @@ namespace Minotaur.Db
     public class FileTimeSeriesDb : ITimeSeriesDb, ITimeSeriesDbUpdater
     {
         private const int STREAM_CAPACITY = 8192;
-        private const int OPTIMAL_FILE_SIZE_MB = 500000000;
+        private const int MB = 1000000;
+        private const int OPTIMAL_FILE_SIZE_MB = (500 * MB) / STREAM_CAPACITY * STREAM_CAPACITY;
+        private const int OPTIMAL_FILE_BLOCK_SLICE = (16 * MB) / STREAM_CAPACITY * STREAM_CAPACITY;
 
         private readonly IFilePathProvider _filePathProvider;
         private readonly IAllocator _allocator;
@@ -168,7 +170,7 @@ namespace Minotaur.Db
                 // Move the generated file from the tmp folder to the data folder.
                 var newFile = _filePathProvider.GetFilePath(symbol, column.Name, start);
                 tmpFile.MoveFileTo(newFile);
-                column.Insert(start, new TimeSlice { Start = start, End = end });
+                column.Insert(start, CreateSlice(symbol, column, start, end));
             }
         }
 
@@ -220,7 +222,7 @@ namespace Minotaur.Db
             }
         }
 
-        private IEnumerable<string> GetFiles(string symbol, Column column, DateTime start, DateTime end)
+        private IEnumerable<FileOffset> GetFiles(string symbol, Column column, DateTime start, DateTime end)
         {
             var revision = column.Revision;
             var lastEnd = start;
@@ -237,11 +239,14 @@ namespace Minotaur.Db
                 }
 
                 lastEnd = entry.Value.End;
-                yield return _filePathProvider.GetFilePath(symbol, column.Name, entry.Key);
+                yield return GetFileOffset(symbol, column.Name, entry.Key, entry.Value.GetOffset(start));
             }
         }
 
-        private List<TimeSlice> Merge(IEnumerable<string> x, IEnumerable<string> y, string symbol, ColumnInfo column, DateTime start, Func<long, bool> filter = null)
+        private FileOffset GetFileOffset(string symbol, string column, DateTime timestamp, long offset)
+            => new FileOffset(_filePathProvider.GetFilePath(symbol, column, timestamp), offset);
+
+        private List<FileTimeSlice> Merge(IEnumerable<string> x, IEnumerable<string> y, string symbol, ColumnInfo column, DateTime start, Func<long, bool> filter = null)
         {
             switch (column.Type)
             {
@@ -260,7 +265,7 @@ namespace Minotaur.Db
             }
         }
 
-        private unsafe List<TimeSlice> Merge<TEntry, T>(
+        private unsafe List<FileTimeSlice> Merge<TEntry, T>(
             IEnumerable<string> x, 
             IEnumerable<string> y, 
             string symbol, 
@@ -271,8 +276,8 @@ namespace Minotaur.Db
         {
             filter = filter ?? (p => true);
 
-            var xTmp = x.MoveToTmpFiles().ToArray();
-            var yTmp = y.MoveToTmpFiles().ToArray();
+            var xTmp = x.MoveToTmpFiles().Select(p => new FileOffset(p, 0)).ToArray();
+            var yTmp = y.MoveToTmpFiles().Select(p => new FileOffset(p, 0)).ToArray();
 
             var xf = new MinotaurFileStream(xTmp);
             var yf = new MinotaurFileStream(yTmp);
@@ -324,21 +329,53 @@ namespace Minotaur.Db
             writer.Flush();
             writer.Dispose();
 
-            var slices = new List<TimeSlice>();
+            var slices = new List<FileTimeSlice>();
             for (var i = 1; i < sliceTicks.Count; i++)
-                slices.Add(CreateSlice(sliceTicks[i - 1], sliceTicks[i]));
-            slices.Add(CreateSlice(sliceTicks[sliceTicks.Count - 1], ticks));
+                slices.Add(CreateSlice<TEntry, T>(symbol, column, sliceTicks[i - 1], sliceTicks[i]));
+            slices.Add(CreateSlice<TEntry, T>(symbol, column, sliceTicks[sliceTicks.Count - 1], ticks));
 
             foreach (var tmp in xTmp)
-                tmp.DeleteFile();
+                tmp.FilePath.DeleteFile();
             foreach (var tmp in yTmp)
-                tmp.DeleteFile();
+                tmp.FilePath.DeleteFile();
 
             return slices;
         }
 
-        private static TimeSlice CreateSlice(long startTicks, long endTicks)
-            => new TimeSlice { Start = new DateTime(startTicks), End = new DateTime(endTicks) };
+        private FileTimeSlice CreateSlice(string symbol, Column column, DateTime start, DateTime end)
+        {
+            switch (column.Type)
+            {
+                case FieldType.Float:
+                    return CreateSlice<FloatEntry, float>(symbol, column.Name, start.Ticks, end.Ticks);
+                case FieldType.Double:
+                    return CreateSlice<DoubleEntry, double>(symbol, column.Name, start.Ticks, end.Ticks);
+                case FieldType.Int32:
+                    return CreateSlice<Int32Entry, int>(symbol, column.Name, start.Ticks, end.Ticks);
+                case FieldType.Int64:
+                    return CreateSlice<Int64Entry, long>(symbol, column.Name, start.Ticks, end.Ticks);
+                case FieldType.String:
+                    return CreateSlice<StringEntry, string>(symbol, column.Name, start.Ticks, end.Ticks);
+                default:
+                    throw new InvalidDataException($"Unknown column type during slice creation. Symbol: {symbol}, Column: {column.Name}, Type: {column.Type}");
+            }
+        }
+
+        private FileTimeSlice CreateSlice<TEntry, T>(string symbol, string column, long startTicks, long endTicks)
+            where TEntry : unmanaged, IFieldEntry<T>
+        {
+            var slice = new FileTimeSlice { Start = new DateTime(startTicks), End = new DateTime(endTicks) };
+
+            var fs = new MinotaurFileStream(new[] { GetFileOffset(symbol, column, slice.Start, 0) });
+            var cs = new ColumnStream<TEntry>(fs, new VoidCodec<TEntry>());
+            var blocks = cs.ReadBlockInfos();
+
+            slice.Blocks = blocks.Sample<TEntry, T>(OPTIMAL_FILE_BLOCK_SLICE);
+
+            cs.Dispose();
+            fs.Dispose();
+            return slice;
+        }
 
         private MinotaurFileStream CreateWriter(string symbol, string column, DateTime start)
             => CreateWriter(_filePathProvider.GetFilePath(symbol, column, start));

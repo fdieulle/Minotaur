@@ -7,7 +7,7 @@ namespace Minotaur.IO
 {
     public class MinotaurFileStream : IStream
     {
-        private readonly IEnumerator<string> _enumerator;
+        private readonly IEnumerator<FileOffset> _enumerator;
         private IDisposable _fileLock;
         private FileStream _current;
         private long _cumulativeLength;
@@ -18,7 +18,7 @@ namespace Minotaur.IO
         /// <summary>
         /// Reader Ctor.
         /// </summary>
-        public MinotaurFileStream(IEnumerable<string> filePaths)
+        public MinotaurFileStream(IEnumerable<FileOffset> filePaths)
         {
             _enumerator = filePaths.GetEnumerator();
         }
@@ -42,7 +42,7 @@ namespace Minotaur.IO
                 var current = GetCurrentFileStream();
                 if (current == null) return read;
 
-                read += _current.Read(buffer, offset, count);
+                read += current.Read(buffer, offset, count);
             }
 
             return read;
@@ -63,7 +63,7 @@ namespace Minotaur.IO
             if (_enumerator != null && _current != null)
             {
                 _enumerator.Reset();
-                _current = null;
+                Dispose();
             }
         }
 
@@ -78,11 +78,13 @@ namespace Minotaur.IO
                 var current = GetCurrentFileStream();
                 if (current == null) return Length;
 
-                _current.Seek(0, SeekOrigin.End);
+                var position = current.Position;
+                var newPosition = current.Seek(offset, SeekOrigin.Current);
+                offset -= newPosition - position;
             }
             while (targetPosition < Position);
 
-            _current.Seek(offset, SeekOrigin.Current);
+            //_current.Seek(offset, SeekOrigin.Current);
             return Position;
         }
 
@@ -91,16 +93,20 @@ namespace Minotaur.IO
             if (_enumerator != null && (_current == null || _current.Position >= _current.Length))
             {
                 _cumulativeLength += _current?.Length ?? 0;
-                _current?.Dispose();
-                _fileLock?.Dispose();
+                Dispose();
 
-                while (_enumerator.MoveNext() && _enumerator.Current.FileExists())
+                while (_enumerator.MoveNext())
                 {
-                    _fileLock = _enumerator.Current.AcquireReadLock();
-                    _current = new FileStream(_enumerator.Current, FileMode.Open, FileAccess.Read, FileShare.Read, 1);
+                    var file = _enumerator.Current;
+                    if(file == null || !file.FileExists()) continue;
+
+                    _fileLock = file.AcquireReadLock();
+                    _current = new FileStream(file.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1);
+                    if (file.Offset > 0)
+                        _current.Seek(file.Offset, SeekOrigin.Begin);
                     return _current;
                 }
-
+                
                 return null;
             }
 
@@ -110,7 +116,9 @@ namespace Minotaur.IO
         public void Dispose()
         {
             _current?.Dispose();
+            _current = null;
             _fileLock?.Dispose();
+            _fileLock = null;
         }
     }
 }

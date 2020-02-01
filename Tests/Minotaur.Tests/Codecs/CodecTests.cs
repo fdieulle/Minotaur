@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using Minotaur.Codecs;
 using Minotaur.Core;
 using Minotaur.Native;
 using Minotaur.Pocs.Codecs;
-using Minotaur.Pocs.Codecs.Int32;
-using Minotaur.Tests.Tools;
 using NUnit.Framework;
 
 namespace Minotaur.Tests.Codecs
@@ -297,18 +294,18 @@ namespace Minotaur.Tests.Codecs
             var sb = new StringBuilder();
 
             var val = 1;
-            Write(sb, (byte*)(&val), sizeof(int));
+            Write(sb, (byte*)(&val));
             val = 1 << 8;
-            Write(sb, (byte*)(&val), sizeof(int));
+            Write(sb, (byte*)(&val));
             val = 1 << 16;
-            Write(sb, (byte*)(&val), sizeof(int));
+            Write(sb, (byte*)(&val));
             val = 1 << 24;
-            Write(sb, (byte*)(&val), sizeof(int));
+            Write(sb, (byte*)(&val));
 
             Console.Write(sb);
         }
 
-        private static void Write(StringBuilder sb, byte* p, int size)
+        private static void Write(StringBuilder sb, byte* p)
         {
             for (var i = 0; i < sizeof(int); i++)
                 sb.AppendFormat("{0:000}-", *(p + i));
@@ -320,63 +317,6 @@ namespace Minotaur.Tests.Codecs
         {
             CheckCodec(new VoidCodecFullStream(), p => Factory.CreateDoubleChunk(p), sizeof(DoubleEntry), checkDecodeHeadInMove: false);
             CheckCodec(new VoidCodecFullStream(), p => Factory.CreateInt32Chunk(p), sizeof(Int32Entry), checkDecodeHeadInMove: false);
-        }
-
-        [Test]
-        public void CheckPerf()
-        {
-            var codec1 = new DeltaMeanLengthInt32Codec();
-            var codec2 = new DeltaMeanLengthInt32Codec2();
-
-            var chunk1024 = Factory.CreateInt32Chunk(1024 / sizeof(Int32Entry));
-            var chunk2048 = Factory.CreateInt32Chunk(2048 / sizeof(Int32Entry));
-            var chunk4096 = Factory.CreateInt32Chunk(4096 / sizeof(Int32Entry));
-            var chunk8192 = Factory.CreateInt32Chunk(8192 / sizeof(Int32Entry));
-            var chunk16384 = Factory.CreateInt32Chunk(16384 / sizeof(Int32Entry));
-
-            var maxSize = Math.Max(codec1.GetMaxEncodedSize(chunk16384.Length), codec2.GetMaxEncodedSize(chunk16384.Length));
-            var buffer = new UnsafeBuffer(maxSize);
-
-            Check(codec1, codec2, chunk1024, buffer);
-            Check(codec1, codec2, chunk2048, buffer);
-            Check(codec1, codec2, chunk4096, buffer);
-            Check(codec1, codec2, chunk8192, buffer);
-            Check(codec1, codec2, chunk16384, buffer);
-
-            Console.WriteLine("[1024] 1: {0}", Perf.Measure(Run, codec1, chunk1024, buffer));
-            Console.WriteLine("[1024] 2: {0}", Perf.Measure(Run, codec2, chunk1024, buffer));
-
-            Console.WriteLine("[2048] 1: {0}", Perf.Measure(Run, codec1, chunk2048, buffer));
-            Console.WriteLine("[2048] 2: {0}", Perf.Measure(Run, codec2, chunk2048, buffer));
-
-            Console.WriteLine("[4096] 1: {0}", Perf.Measure(Run, codec1, chunk4096, buffer));
-            Console.WriteLine("[4096] 2: {0}", Perf.Measure(Run, codec2, chunk4096, buffer));
-
-            Console.WriteLine("[8192] 1: {0}", Perf.Measure(Run, codec1, chunk8192, buffer));
-            Console.WriteLine("[8192] 2: {0}", Perf.Measure(Run, codec2, chunk8192, buffer));
-
-            Console.WriteLine("[16384] 1: {0}", Perf.Measure(Run, codec1, chunk16384, buffer));
-            Console.WriteLine("[16384] 2: {0}", Perf.Measure(Run, codec2, chunk16384, buffer));
-
-            buffer.Dispose();
-        }
-
-        private static void Check(ICodec<Int32Entry> x, ICodec<Int32Entry> y, Int32Entry[] chunk, UnsafeBuffer buffer)
-        {
-            var copy = chunk.ToArray();
-            Run(x, copy, buffer);
-            copy.IsEqualTo(chunk);
-            Run(y, copy, buffer);
-            copy.IsEqualTo(chunk);
-        }
-
-        private static void Run(ICodec<Int32Entry> codec, Int32Entry[] chunk, UnsafeBuffer buffer)
-        {
-            fixed (Int32Entry* p = chunk)
-            {
-                var length = codec.Encode(p, chunk.Length, buffer.Ptr);
-                codec.Decode(buffer.Ptr, length, p);
-            }
         }
 
         private static void CheckCodec<T>(ICodecFullStream codec, 

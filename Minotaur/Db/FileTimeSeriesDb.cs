@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using Minotaur.Codecs;
@@ -26,12 +27,15 @@ namespace Minotaur.Db
         private readonly Schema _schema;
         private readonly ColumnStreamFactory<MinotaurFileStream> _columnFactory = new ColumnStreamFactory<MinotaurFileStream>();
 
-        public FileTimeSeriesDb(IFilePathProvider filePathProvider, IAllocator allocator)
+        public FileTimeSeriesDb(IFilePathProvider filePathProvider, IAllocator allocator = null)
         {
             _filePathProvider = filePathProvider;
-            _allocator = allocator;
+            _allocator = allocator ?? new DummyUnmanagedAllocator();
             _schema = new Schema(filePathProvider);
         }
+
+        public FileTimeSeriesDb(string root, IAllocator allocator = null)
+            : this(new FilePathProvider(root), allocator) { }
 
         #region Implementation of ITimeSeriesDb
 
@@ -59,37 +63,37 @@ namespace Minotaur.Db
         {
             data = data.ToDictionary(p => p.Key, p => p.Value); // Clone
 
-            if (data.TryGetValue("timestamp", out var timestamps))
+            if (!data.TryGetValue("timestamp", out var timestamps))
+                throw new MissingPrimaryKeyException("timestamp column must be specified");
+            
+            data.Remove("timestamp");
+
+            DateTime[] timeline;
+            if (timestamps is DateTime[] times)
+                timeline = times;
+            else if (timestamps is long[] longs)
+                timeline = longs.Select(p => new DateTime(p)).ToArray();
+            else throw new InvalidDataException($"The timestamp column has to be type of DateTime[] or long[]");
+
+            // Sanity check
+            var columns = new List<IArrayRecorder>();
+            foreach (var pair in data)
             {
-                data.Remove("timestamp");
-
-                DateTime[] timeline;
-                if (timestamps is DateTime[] times)
-                    timeline = times;
-                else if (timestamps is long[] longs)
-                    timeline = longs.Select(p => new DateTime(p)).ToArray();
-                else throw new InvalidDataException($"The timestamp column has to be type of DateTime[] or long[]");
-
-                // Sanity check
-                var columns = new List<IArrayRecorder>();
-                foreach (var pair in data)
-                {
-                    if(pair.Value.Length != timeline.Length)
-                        throw new InvalidDataException($"The number of rows for the column {pair.Key} has to be equals to the number of timestamps");
-                    columns.Add(pair.MakeRecorder());
-                }
-
-                var recorder = CreateRecorder(symbol);
-                for (var i = 0; i < timeline.Length; i++)
-                {
-                    var rowRecorder = recorder.AddRow(timeline[i]);
-
-                    foreach (var column in columns)
-                        column.Record(rowRecorder, i);
-                }
-
-                recorder.Commit();
+                if(pair.Value.Length != timeline.Length)
+                    throw new InvalidDataException($"The number of rows for the column {pair.Key} has to be equals to the number of timestamps");
+                columns.Add(pair.MakeRecorder());
             }
+
+            var recorder = CreateRecorder(symbol);
+            for (var i = 0; i < timeline.Length; i++)
+            {
+                var rowRecorder = recorder.AddRow(timeline[i]);
+
+                foreach (var column in columns)
+                    column.Record(rowRecorder, i);
+            }
+
+            recorder.Commit();
         }
 
         public void Delete(string symbol, DateTime start, DateTime end, string[] columns = null)

@@ -31,10 +31,10 @@ namespace Minotaur.Tests
             return data;
         }
 
-        public static long[] CreateTimelineTicks(int count, double intervalMs = 233)
+        public static long[] CreateTimelineTicks(int count, double intervalMs = 233, DateTime? start = null)
         {
             var ticks = new long[count];
-            var now = DateTime.Now;
+            var now = start ?? DateTime.Now;
             for (var i = 0; i < count; i++)
             {
                 ticks[i] = now.Ticks;

@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading;
 using BenchmarkDotNet.Running;
 using Minotaur.Benchmarks.Codecs;
+using Minotaur.Benchmarks.HighPerf;
 
 namespace Minotaur.Benchmarks
 {
@@ -13,9 +14,10 @@ namespace Minotaur.Benchmarks
     {
         static void Main(string[] args)
         {
+            BenchmarkRunner.Run<ObjectPoolBenchmark>();
             //BenchmarkRunner.Run<ColumnStreamBenchmark>();
             //BenchmarkRunner.Run<Int32CodecEncodeDecodeBenchmark>();
-            BenchmarkRunner.Run<Int32CodecDecodeOnlyBenchmark>();
+            //BenchmarkRunner.Run<Int32CodecDecodeOnlyBenchmark>();
             //foreach (var cacheMemory in GetCacheInfo())
             //    Console.WriteLine(cacheMemory);
             //Console.ReadLine();
